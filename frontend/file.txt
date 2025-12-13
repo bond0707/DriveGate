@@ -1,0 +1,2 @@
+delete this when you initialize the frontend,
+i only created this file so the frontend folder can be committed
