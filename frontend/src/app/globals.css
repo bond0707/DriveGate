@@ -1,0 +1,7 @@
+/* Apply a smooth fade to the body and all MUI Cards/Papers */
+body, 
+.MuiPaper-root, 
+.MuiCard-root, 
+.MuiAppBar-root {
+  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
