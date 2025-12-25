@@ -34,7 +34,7 @@ async def google_login():
             detail=f"Failed to generate login URL: {str(e)}"
         )
     
-@Auth_Router.post('google/callback', response_model=AuthResponse)
+@Auth_Router.post('/google/callback', response_model=AuthResponse)
 async def google_callback(auth_data: GoogleAuthRequest, 
                           db: AsyncSession= Depends(get_db)):
     try:
