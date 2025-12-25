@@ -7,7 +7,7 @@ from googleapiclient.errors import HttpError
 from google.oauth2.credentials import Credentials
 
 # For GoogleAuth 2.0 and Drive Operations
-class GoogleAuthService():
+class GoogleAuthService:
     # Google Oauth2.0 endpoints
     GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
     GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -57,6 +57,7 @@ class GoogleAuthService():
 
         # Sending request to google [post]
         async with httpx.AsyncClient() as client:
+            print(token_data)
             response = await client.post(
                 self.GOOGLE_TOKEN_URL,
                 data=token_data,
@@ -125,22 +126,18 @@ class GoogleAuthService():
             scopes        = [self.DRIVE_SCOPE, "openid", "email", "profile"],
         )
 
+    async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
+        token_data = {
+            'refresh_token': refresh_token,
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'grant_type': 'refresh_token'
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(self.GOOGLE_TOKEN_URL, data=token_data)
+            if response.status_code != 200:
+                raise Exception(f"Token refresh failed: {response.text}")
+            return response.json()
 
 google_auth_service = GoogleAuthService()
-
-'''
-idk if we need this (@Dhruvil, idk too but we'll need this like 80%)
-async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
-    token_data = {
-        'refresh_token': refresh_token,
-        'client_id': self.client_id,
-        'client_secret': self.client_secret,
-        'grant_type': 'refresh_token'
-    }
-
-    async with httpx.AsyncClient() as client:
-        response = await client.post(self.GOOGLE_TOKEN_URL, data=token_data)
-        if response.status_code != 200:
-            raise Exception(f"Token refresh failed: {response.text}")
-        return response.json()
-'''

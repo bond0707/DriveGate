@@ -72,17 +72,18 @@ async def google_callback(
             user = await user_service.create_user(db, user_data)
 
             # Create Google Drive Folder by Our Name
-            try:
-                folder_id = await google_auth_service.create_drive_folder(access_token)
-                # update the db
-                user = await user_service.update_user(db, user, {"drive_folder_id": folder_id})
-            except Exception as fe:
-                print(f"Warning: Failed to create Drive folder: {fe}")
+            if user.drive_folder_id is None: 
+                try:
+                    folder_id = await google_auth_service.create_drive_folder(access_token)
+                    # update the db
+                    user = await user_service.update_drive_folder(db, user.id, folder_id)
+                except Exception as fe:
+                    print(f"Warning: Failed to create Drive folder: {fe}")
         else:
             # Existing user - update refresh token if we got a new one
             if refresh_token:
-                user = await user_service.update_user(db, user, {'google_refresh_token': refresh_token})
-        
+                user = await user_service.update_refresh_token(db, user.id, refresh_token)
+    
         # Generate our JWT token
         jwt_token = jwt_manager.create_user_token(user.id, user.email)
 
@@ -123,5 +124,3 @@ async def validate_token(token: str):
             'valid': False,
             'detail': 'Invalid or Expired Token'
         }
-
-

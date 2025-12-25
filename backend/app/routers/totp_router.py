@@ -10,10 +10,10 @@ from app.utils.dependencies import get_current_user
 
 totp_router = APIRouter()
 
-@totp_router.post("/setup")
+@totp_router.get("/setup")
 async def generate_totp_secret(user: UserModel = Depends(get_current_user)):
     try:
-        totp_secret = await totp_service.generate_client_secret()
+        totp_secret = await totp_service.generate_totp_secret()
         return JSONResponse(
             content = {"totp_secret": totp_secret},  
             status_code = status.HTTP_200_OK,
@@ -21,7 +21,7 @@ async def generate_totp_secret(user: UserModel = Depends(get_current_user)):
     except Exception as e:
         return JSONResponse(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content = {"message": f"{e}", "traceback": f"{e.with_traceback()}"}
+            content = {"message": e}
         )
 
 @totp_router.post("/store")
@@ -33,15 +33,15 @@ async def verify_and_store_totp_secret(
 ):
     if await totp_service.verify_totp(user_totp, user_totp_secret):
         try:
-            user_service.update_user(db, user, {"totp_secret": user_totp_secret})
+            await user_service.update_totp_secret(db, user.id, user_totp_secret)
             return JSONResponse(
                 status_code = status.HTTP_200_OK,
-                detail = "TOTP Secret stored in DB." # @Dhruvil, is this good? or should I avoid using 'detail'?
+                content = {"message": "TOTP Secret stored in DB."}
             )
         except Exception as e:
             return JSONResponse(
                 status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content = {"message": f"{e}", "traceback": f"{e.with_traceback()}"}
+                content = {"message": e}
             )
 
 @totp_router.post("/verify")
@@ -51,38 +51,22 @@ async def verify_totp(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        totp_secret = await user_service.get_totp_secret_by_url_slug(url_slug, db)
-        if await totp_service.verify_totp(totp, totp_secret):
+        totp_secret = await user_service.get_totp_secret_by_url_slug(db, url_slug)
+
+        if totp_secret is None or not await totp_service.verify_totp(totp, totp_secret):
             return JSONResponse(
-                status_code = status.HTTP_200_OK,
-                detail = "TOTP is valid!"
+                status_code = status.HTTP_401_UNAUTHORIZED,
+                content     = {"is_valid": False}
             )
         else:
             return JSONResponse(
-                status_code = status.HTTP_401_UNAUTHORIZED,
-                detail = "TOTP is invalid!"
+                status_code = status.HTTP_200_OK,
+                content     = {"is_valid": True}
             )
     except Exception as e:
         return JSONResponse(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content = {"message": f"{e}", "traceback": f"{e.with_traceback()}"}
+            content = {"message": e}
         )
 
 
-
-"""
-OUR FLOW.
-
-NextJS tells FastAPI to setup totp for the first time (/setup)
-FastAPI returns the randomly generated totp_secret (generate_totp_secret())
-NextJS uses that to generate and display a QR Code to the user
-The user scans that and adds the totp_secret to their authenticator app
-The user then enters the otp and clicks submit
-NextJS sends it to FastAPI along with the totp_secret (at this point there is no totp_secret for the user in db) (/store)
-FastAPI verifies the TOTP and if correct, stores it in db. (/store)
-Then from the next time, NextJS sends the URL slug
-FastAPI fetches the totp_secret using that URL slug (/{url_slug} in main.py)
-User enters TOTP
-NextJS sends this TOTP to FastAPI (/verify)
-FastAPI verifies it and gives response accordingly. (Kirtan (Response 200 OK) / Dhruvil (ERROR 6969 Gay))
-"""

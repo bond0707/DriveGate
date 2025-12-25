@@ -9,6 +9,7 @@ from app.routers.totp_router import totp_router
 from app.database.connection import engine, Base
 from fastapi.middleware.cors import CORSMiddleware
 from app.services.user_service import user_service
+from app.routers.url_slug_router import url_slug_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,8 +42,13 @@ app.include_router(
     prefix = '/totp', 
     tags   = ['TOTP']
 )
+app.include_router(
+    router = url_slug_router, 
+    prefix = '/url', 
+    tags   = ['URL Slug']
+)
 
-@app.get("/")
+@app.get("/home")
 def return_homepage():
     return JSONResponse(
         status_code = status.HTTP_200_OK,
@@ -54,7 +60,7 @@ async def verify_totp(
     url_slug: str, 
     db: AsyncSession = Depends(get_db)
 ):
-    totp_secret = await user_service.get_totp_secret_by_url_slug(url_slug, db)
+    totp_secret = await user_service.get_totp_secret_by_url_slug(db, url_slug)
     if totp_secret is not None:
         return JSONResponse(
             status_code = status.HTTP_200_OK,
