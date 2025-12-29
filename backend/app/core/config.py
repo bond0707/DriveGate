@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str
 
+    GOOGLE_DRIVE_UPLOAD_REQUEST_URL: str
+
+    APP_NAME: str
+    APP_VERSION: str
+
     model_config = SettingsConfigDict(
         env_file = ".env",
         extra    = "ignore", # This allows extra fields in .env without errors

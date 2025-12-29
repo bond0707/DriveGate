@@ -8,11 +8,11 @@ from app.services.user_service import user_service
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 # HTTPBearer for extracting Authorization header
-security = HTTPBearer(auto_error=False)
+security = HTTPBearer(scheme_name="Access Token", auto_error=False)
+uploads  = HTTPBearer(scheme_name="Upload Token", auto_error=True)
 
-async def get_current_user(
-    db: AsyncSession = Depends(get_db),
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+async def get_access_token_payload(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ):
     if credentials is None:
         raise HTTPException(
@@ -33,6 +33,36 @@ async def get_current_user(
             headers     = {"WWW-Authenticate": "Bearer"}
         )
 
+    return payload
+
+async def get_upload_token_payload(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(uploads)
+):
+    if credentials is None:
+        raise HTTPException(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail      = "Authorization header missing",
+            headers     = {"WWW-Authenticate": "Bearer"},
+        )
+
+    # Extract token
+    token = credentials.credentials
+
+    # Verify token
+    payload = jwt_manager.verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail      = "Invalid or expired token",
+            headers     = {"WWW-Authenticate": "Bearer"}
+        )
+
+    return payload
+
+async def get_current_user(
+    db: AsyncSession = Depends(get_db),
+    payload: dict = Depends(get_access_token_payload),
+):
     # Get user_id from token
     user_id = payload.get("user_id")
     if not user_id:

@@ -126,7 +126,7 @@ class GoogleAuthService:
             scopes        = [self.DRIVE_SCOPE, "openid", "email", "profile"],
         )
 
-    async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
+    async def get_access_token(self, refresh_token: str) -> Dict[str, Any]:
         token_data = {
             'refresh_token': refresh_token,
             'client_id': self.client_id,
@@ -138,6 +138,6 @@ class GoogleAuthService:
             response = await client.post(self.GOOGLE_TOKEN_URL, data=token_data)
             if response.status_code != 200:
                 raise Exception(f"Token refresh failed: {response.text}")
-            return response.json()
+            return response.json()["access_token"]
 
 google_auth_service = GoogleAuthService()

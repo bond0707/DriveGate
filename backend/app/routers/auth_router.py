@@ -1,4 +1,4 @@
-# Our functions that will finally get to use mate this shit pmo (LESSGO (I, Dhruvil Adroja, am gay!)
+# Our functions that will finally get to use mate this shit pmo
 from fastapi.responses import JSONResponse
 from app.models.UserModel import UserModel
 from app.database.connection import get_db
@@ -8,7 +8,7 @@ from app.services.user_service import user_service
 from app.utils.dependencies import get_current_user
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.services.google_auth_service import google_auth_service
-from app.schemas.User import GoogleAuthRequest, AuthResponse, UserResponse
+from app.schemas.user import GoogleAuthRequest, AuthResponse, UserResponse
 
 auth_router = APIRouter()
 

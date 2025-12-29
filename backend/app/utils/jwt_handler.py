@@ -22,7 +22,7 @@ class JWTManager():
         
         # Calculate expiration time
         expire = datetime.now() + timedelta(minutes=self.access_token_expire_minutes)
-        
+
         # Add standard JWT claims
         to_encode.update({
             "exp": expire,  # Expiration time
@@ -67,13 +67,18 @@ class JWTManager():
         
         return self.create_access_token(data)
     
+    def create_upload_token(self, url_slug: str) -> str:
+        """Takes the URL slug as an arguement."""
+        data = {"url_slug": url_slug}
+        return self.create_access_token(data)
+    
     def extract_user_id(self, token: str) -> Optional[int]:
         payload = self.verify_token(token)
         if payload:
             return payload.get("user_id")
         return None
     
-    def is_token_expired(self, token: str) -> bool:        
+    def is_token_expired(self, token: str) -> bool:
         payload = self.verify_token(token)
         return payload is None
 

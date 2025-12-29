@@ -5,6 +5,7 @@
 
 # Custom files & folders
 .venv/
+.next/
 
 # User-specific files
 *.rsuser
