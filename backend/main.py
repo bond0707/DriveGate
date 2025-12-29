@@ -1,8 +1,10 @@
 from app.models import UserModel
+from app.schemas.generic import *
+from app.core.config import settings
 from contextlib import asynccontextmanager
-from fastapi.responses import JSONResponse
 from app.database.connection import get_db
 from fastapi import FastAPI, Depends, status
+from fastapi.exceptions import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.routers.auth_router import auth_router
 from app.routers.totp_router import totp_router
@@ -19,8 +21,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     lifespan  = lifespan,
-    docs_url  = "/docs",   # these bottom two are default values so not needed
-    redoc_url = "/redoc"   # but i am keeping them because you kept them.
+    title     = settings.APP_NAME,
+    version   = settings.APP_VERSION,
 )
 
 # For nextjs we gotta do this (copy understood)
@@ -48,27 +50,23 @@ app.include_router(
     tags   = ['URL Slug']
 )
 
-@app.get("/home")
-def return_homepage():
-    return JSONResponse(
-        status_code = status.HTTP_200_OK,
-        content     = {"app name": "TOTP Drive Uploader"},
-    )
+@app.get("/", response_model=RootEndpointResponse, status_code=status.HTTP_200_OK)
+async def root():
+    return {
+        "app_name" : settings.APP_NAME,
+        "app_version" : settings.APP_VERSION,
+        "status"   : "running",
+    }
 
-@app.get("/{url_slug}")
-async def verify_totp(
+@app.get("/{url_slug}", response_model=MessageResponse, status_code=status.HTTP_200_OK)
+async def verify_url_slug(
     url_slug: str, 
     db: AsyncSession = Depends(get_db)
 ):
-    totp_secret = await user_service.get_totp_secret_by_url_slug(db, url_slug)
-    if totp_secret is not None:
-        return JSONResponse(
-            status_code = status.HTTP_200_OK,
-            content     = {"message": "Url slug is valid!", "secret": totp_secret}
-        )
-    else:
-        return JSONResponse(
+    if await user_service.get_totp_secret_by_url_slug(db, url_slug) is None:
+        raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            content     = {"message": "Url slug is invalid, redirect to marketing page (to-do)!"}
+            detail      = "Url slug is invalid, redirect to marketing page (to-do)!"
         )
-        
+
+    return {"message": "Url slug is valid!"}
