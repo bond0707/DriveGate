@@ -1,0 +1,143 @@
+import httpx
+from fastapi import status
+from typing import Dict, Any
+from app.core.config import settings
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from google.oauth2.credentials import Credentials
+
+# For GoogleAuth 2.0 and Drive Operations
+class GoogleAuthService:
+    # Google Oauth2.0 endpoints
+    GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+    GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+    GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
+
+    # Google Drive api
+    DRIVE_API_VERSION = "v3"
+    DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"
+
+    def __init__(self):
+        # from env
+        self.client_id = settings.GOOGLE_CLIENT_ID
+        self.client_secret = settings.GOOGLE_CLIENT_SECRET
+        self.redirect_uri = settings.GOOGLE_REDIRECT_URI
+
+    def get_authorization_url(self) -> str:
+        # defining Permissions
+        scopes = [
+            'openid',
+            'email',
+            'profile',
+            self.DRIVE_SCOPE # for files modification
+        ]
+
+        # Auth url parameter SHitties part to be honest (@Dhruvil brooo google authlib handles this internally (we just need to call functions))
+        auth_url = (
+            f"{self.GOOGLE_AUTH_URL}?"
+            f"client_id={self.client_id}&"
+            f"redirect_uri={self.redirect_uri}&"
+            f"response_type=code&"
+            f"scope={'+'.join(scopes)}&" # joins all permission we defined
+            f"access_type=offline&"  # Get refresh token for long term access
+            f"prompt=consent" # for consent purpose
+        )
+
+        return auth_url
+
+    # Access authorization code for access and refresh token
+    async def exchange_code_for_tokens(self, code: str) -> Dict[str, Any]:
+        token_data = {
+            'code': code,
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'redirect_uri': self.redirect_uri,
+            'grant_type': 'authorization_code'
+        }
+
+        # Sending request to google [post]
+        async with httpx.AsyncClient() as client:
+            print(token_data)
+            response = await client.post(
+                self.GOOGLE_TOKEN_URL,
+                data=token_data,
+                headers={'Content-Type':'application/x-www-form-urlencoded'}
+            )
+
+            # Checking if rizz worked
+            if response.status_code != status.HTTP_200_OK:
+                # Kirtan's fault not mine (yeah sure mf)
+                error_details = response.json().get("error description",'Unkown error')
+                raise Exception(f'Token Exchanged Failed Because of Dhruvil: {error_details}')
+
+            return response.json()
+
+    # Extracting user info using accesss token
+    async def get_user_info(self, access_token: str) -> Dict[str, Any]:
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(self.GOOGLE_USERINFO_URL, headers=headers)
+            response.raise_for_status() # raise excpetion for bad status
+            return response.json()
+
+    # Creating drive folder as we discussed chigga change if you want to
+    async def create_drive_folder(self, access_token: str) -> str:
+        try:
+            # Create credentials object from access token
+            credentials = Credentials(token = access_token)
+
+            # Build google Drive Service Client
+            drive_service = build(
+                'drive',
+                self.DRIVE_API_VERSION,
+                credentials = credentials
+            )
+
+            # Folder name it's temp for now change if you want (nah it works for now)
+            folder_name= f'TOTP_UPLOADER'
+            folder_metadata = {
+                'name': folder_name,
+                'mimeType': 'application/vnd.google-apps.folder',
+                'description': 'TOTP UPLOADER FILES'
+            }
+            # Create folder
+            # IDK THIS PART AI USED (THEN WHY DIDNT YOU LET ME DO IT NIGAA I HAD IT DONE IN MY PC!!!!)
+            folder = drive_service.files().create(
+                body   = folder_metadata,
+                fields = 'id'  # Only return the folder ID
+            ).execute()
+
+            return folder.get('id')
+
+        except HttpError as e:
+            raise Exception(f'Google Drive API Error: {e}')
+        except Exception as er:
+            raise Exception(f'FAiled to Create Drive Uploader: {er}')
+
+    # Chal have longterm mate olu kari dau credentials
+    def create_google_credentials(self, token_data: Dict[str, Any]) -> Credentials:
+        return Credentials(
+            client_id     = self.client_id,
+            client_secret = self.client_secret,
+            token_uri     = self.GOOGLE_TOKEN_URL,
+            token         = token_data.get('access_token'),
+            refresh_token = token_data.get('refresh_token'),
+            scopes        = [self.DRIVE_SCOPE, "openid", "email", "profile"],
+        )
+
+    async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
+        token_data = {
+            'refresh_token': refresh_token,
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'grant_type': 'refresh_token'
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(self.GOOGLE_TOKEN_URL, data=token_data)
+            if response.status_code != 200:
+                raise Exception(f"Token refresh failed: {response.text}")
+            return response.json()
+
+google_auth_service = GoogleAuthService()
