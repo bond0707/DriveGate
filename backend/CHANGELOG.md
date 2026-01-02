@@ -1,25 +1,26 @@
 # CHANGELOG
 
-This release represents a major backend refactor, schema cleanup, and a finalized TOTP-based secure upload flow.
+This release represents a major database schema refactor, SSL configuration improvements, and optimized dependency management.
 
-This commit is a major functional update on Kirtan's commit `baf6803`
+This commit is an update on main after Kirtan's commit `e459938`
 
 ---
 
 ## New Files Added
 
-- `app/schemas/drive.py`
-- `app/schemas/totp.py`
-- `app/schemas/generic.py`
-- `.env.example`
+- `app/core/enums.py`
+- `app/models/user_drive.py`
+- `app/models/user_auth.py`
+- `requirements.in`
 
 ---
 
 ## Universal Changes
 
-- Migrated database from MySQL to **PostgreSQL**.
-- Cleared all `__init__.py` files to avoid circular import issues.
-- Renamed all files in `app/schema/` to use only **lowercase letters**.
+- Optimized imports in `main.py` and models directory for better performance.
+- Changed database schema to normalize user data into separate tables to make it scalable.
+- Implemented explicit SSL configuration for database connections.
+- Created `requirements.in` and compiled `requirements.txt` for optimized dependency management.
 
 ---
 
@@ -27,32 +28,40 @@ This commit is a major functional update on Kirtan's commit `baf6803`
 
 ### app/core/config.py
 
-- Added a new configuration variable:
-  - `GOOGLE_DRIVE_UPLOAD_REQUEST_URL`
+- Added new configuration variable:
+  - `DB_SERVICE_CA_PATH`
+- Removed duplicate `model_config` setting.
+
+### app/core/enums.py
+
+- Added two enumerations:
+  - `AuthType` (currently with one value: `GOOGLE`)
+  - `DriveType` (currently with one value: `GOOGLE_DRIVE`)
 
 ---
 
 ## Database Models
 
-### app/models/UserModel.py
+### app/models/users.py
 
-- Migrated to SQLAlchemy **2.0 ORM syntax**.
-- Renamed table from `user` to `users` (reserved keyword in PostgreSQL).
-- Changed `users.totp_secret` column type from `String(32)` to `CHAR(32)`.
+- Removed fields which have migrated to new normalized tables.
+
+### app/models/user_drive.py
+
+- Added new model for storing totp credentials and folder information.
+
+### app/models/user_auth.py
+
+- Added new model for storing authentication methods (Google OAuth, Github etc.).
 
 ---
 
 ## Routes
 
-### app/routes/totp_router.py
+### app/routers/auth_router.py
 
-- Replaced `JSONResponse` usage with **Pydantic models** and `HTTPException`.
-- Replaced `generate_totp_secret()` with `return_totp_secret_and_uri()`.
-
-### app/routes/url_slug_router.py
-
-- Replaced `JSONResponse` usage with **Pydantic models** and `HTTPException`.
-- Added `get_upload_uri()` method to generate Google Drive upload URLs.
+- Modified `google_callback()` method to no longer automatically create URL slugs and Drive folders (allowing null values in new schema).
+- Added new `update_drive_folder()` endpoint to create Drive folder and update database records.
 
 ---
 
@@ -60,8 +69,11 @@ This commit is a major functional update on Kirtan's commit `baf6803`
 
 ### app/schemas/user.py
 
-- Added base class `SQLAlchemyConvertible` with shared Pydantic config.
-- `UserModel` (and future models) now inherit from this base class.
+- Removed `SQLAlchemyConvertible` base class (unused).
+- Added new request/response schemas:
+  - `FolderUpdateRequest`
+  - `FolderUpdateResponse`
+- Modified `UserResponse` schema to replace boolean flags with new model fields.
 
 ---
 
@@ -69,48 +81,27 @@ This commit is a major functional update on Kirtan's commit `baf6803`
 
 ### app/services/google_auth_service.py
 
-- Renamed `refresh_access_token()` to `get_access_token()`.
-- Method now returns only the **access token**.
+- Modified `create_drive_folder()` to accept folder names as parameters instead of using hardcoded names.
 
 ### app/services/user_service.py
 
-- Added exception handling to:
-  - `delete_user()`
-  - `get_user_by_id()`
-  - `get_user_by_email()`
-- Replaced query-based lookups with `db.get()` for faster primary-key access.
-- Added `get_drive_credentials_by_url_slug()` returning `(folder_id, refresh_token)`.
-- Optimized select queries to fetch only required fields.
-- Optimized update queries using SQL **RETURNING** clause.
-- Modified `delete_user()` to return `(user_id, username, email)` instead of `bool`.
-
-### app/services/totp_service.py
-
-- Added `get_provisioning_uri()` for authenticator apps.
-- Converted entire service to **synchronous execution** (async not required).
+- Completely rewritten to handle relationships between `users`, `user_drive`, and `user_auth` tables.
 
 ---
 
 ## Utilities
 
-### app/utils/dependencies.py
+### app/utils/jwt_handler.py → app/utils/jwt_manager.py
 
-- Extracted JWT payload parsing into `get_access_token_payload()` and `get_upload_token_payload()`
-- Simplified `get_current_user()` by separating concerns.
-
-### app/utils/jwt_handler.py
-
-- Added `create_upload_token()` method.
-- Generates a short-lived JWT used exclusively for uploads.
+- Renamed file to match class name for consistency.
 
 ---
 
-## Application Entry
+## Database Connection
 
-### main.py
+### app/database/connection.py
 
-- Replaced `JSONResponse` usage with **Pydantic models** and `HTTPException`.
-- Modified `verify_url_slug()` to return homepage if URL slug is empty.
+- Replaced implicit server-side SSL with explicit SSL configuration using certificate authority file.
 
 ---
 
@@ -118,50 +109,22 @@ This commit is a major functional update on Kirtan's commit `baf6803`
 
 ### .gitignore
 
-- Added `.next/` directory.
+- Added `ca.pem` to ignore SSL certificate files.
 
 ---
 
 ## Documentation
 
+### .env.example
+
+- Cleaned up formatting by removing unnecessary inverted quotes.
+- Added new environment variable:
+  - `DB_SERVICE_CA_PATH`
+
+### Testcases
+
+* Updated testcases/auth_router.md to include the new `create_drive_folder()` method.
+
 ### README.md
 
-- Updated with future roadmap and planned features.
-
----
-
-## **TOTP Flow**
-
-### **Initial Setup (First-time TOTP Configuration)**
-
-1. **Request TOTP Secret** : NextJS calls FastAPI's `/setup` endpoint to get a randomly generated TOTP secret.
-2. **Generate QR Code** : NextJS uses the returned `totp_secret` to generate and display a QR code to the user.
-3. **User Setup** : The user scans the QR code with their authenticator app (Google Authenticator, Authy, etc.) to add the TOTP secret.
-4. **Verify Setup** : The user enters the first OTP from their app and submits.
-5. **Store Secret** : NextJS sends the OTP and TOTP secret to `/store`. FastAPI verifies the OTP and, if correct, stores the TOTP secret in the database for that user.
-
-### **Subsequent TOTP Usage (Upload Verification)**
-
-1. **Get User Info** : FastAPI uses the URL slug to identify the user (via `/{url_slug}` endpoint in main.py).
-2. **Request TOTP** : The user is prompted to enter their current TOTP code.
-3. **Verify TOTP** : NextJS sends the TOTP code and URL slug to the `/verify` endpoint.
-4. **Validation** : FastAPI:
-
-* Fetches the TOTP secret from the database using the URL slug
-* Verifies the provided TOTP code against the stored secret
-* Returns `is_valid: true` (Response 200 OK) or `is_valid: false` (Error response (due to @Dhruvil))
-
----
-
-## Upload Flow
-
-1. User configures TOTP and URL slug on the website.
-2. User opens their upload URL (`/{url_slug}`) on a **remote PC**.
-3. Remote PC renders upload UI and prompts for TOTP.
-4. User enters TOTP from their authenticator app.
-5. Remote PC sends TOTP and URL slug to `/totp/verify`.
-6. Backend verifies TOTP and returns a short-lived upload token.
-7. Remote PC requests upload URL via `/url/get-upload-link` using upload token.
-8. Backend returns Google Drive resumable upload URL.
-9. Remote PC uploads file directly to Google Drive.
-10. Upload token expires or is invalidated after use.
+- Updated with new authentication and Drive setup flows.

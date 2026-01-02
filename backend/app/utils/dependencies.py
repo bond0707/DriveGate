@@ -1,7 +1,7 @@
 # Not sure if this is a optimized way for protected routing recheck it for me (copy understood. seems good to me but i think you know more about this than me)
 from typing import Optional
 from app.database.connection import get_db
-from app.utils.jwt_handler import jwt_manager
+from app.utils.jwt_manager import jwt_manager
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends, HTTPException, status
 from app.services.user_service import user_service
@@ -80,6 +80,7 @@ async def get_current_user(
         )
     return user
 
+# For @Dhruvil, I'll remove this if it remains useless. 
 async def get_optional_user(
     db: AsyncSession = Depends(get_db),
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
@@ -99,7 +100,7 @@ async def get_optional_user(
         
         user = await user_service.get_user_by_id(db, user_id)
         return user
-        
+
     except Exception:
         # If anything fails, return None (not authenticated)
         return None

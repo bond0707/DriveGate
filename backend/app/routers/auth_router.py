@@ -1,41 +1,43 @@
-# Our functions that will finally get to use mate this shit pmo
-from fastapi.responses import JSONResponse
-from app.models.UserModel import UserModel
+from app.models.users import UserModel
 from app.database.connection import get_db
-from app.utils.jwt_handler import jwt_manager
+from app.utils.jwt_manager import jwt_manager
+from app.core.enums import AuthType, DriveType
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.user_service import user_service
 from app.utils.dependencies import get_current_user
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.services.google_auth_service import google_auth_service
-from app.schemas.user import GoogleAuthRequest, AuthResponse, UserResponse
+from app.schemas.user import (
+    AuthResponse, 
+    UserResponse, 
+    GoogleAuthRequest, 
+    FolderUpdateRequest,
+    FolderUpdateResponse,
+)
 
 auth_router = APIRouter()
 
-@auth_router.get('/google/login')
+@auth_router.get('/google/login', status_code=status.HTTP_200_OK)
 async def google_login():
-    try: 
+    try:
         auth_url = google_auth_service.get_authorization_url()
-        return JSONResponse(
-            status_code = status.HTTP_200_OK,
-            content     = {'auth_url': auth_url}
-        )
+        return {'auth_url': auth_url}
     except Exception as e:
         raise HTTPException(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail      = f"Failed to generate login URL: {str(e)}"
         )
-    
+
 @auth_router.post('/google/callback', response_model=AuthResponse)
 async def google_callback(
-    auth_data: GoogleAuthRequest, 
+    auth_data: GoogleAuthRequest,
     db: AsyncSession = Depends(get_db)
 ):
     try:
         # Exchange authorization code for Google tokens
         tokens = await google_auth_service.exchange_code_for_tokens(auth_data.code)
 
-        access_token = tokens.get('access_token')
+        access_token  = tokens.get('access_token')
         refresh_token = tokens.get('refresh_token')
 
         if not access_token:
@@ -43,59 +45,93 @@ async def google_callback(
                 status_code = status.HTTP_400_BAD_REQUEST,
                 detail      = 'Failed to get access token from google'
             )
-        
+
         # Get user info from AccessToken
         user_info = await google_auth_service.get_user_info(access_token)
 
-        # Extract feilds from user_info (EZY part)
+        # Extract fields from user_info
         email = user_info.get('email')
         google_uuid = user_info.get('sub')
-        username = user_info.get('name', email.split('@')[0]) # Fallback: extract username from email
+        username = user_info.get('name', email.split('@')[0])
 
         if not google_uuid or not email:
             raise HTTPException(
                 status_code = status.HTTP_400_BAD_REQUEST,
                 detail      = "Invalid user info from Google"
             )
-        
-        # Check if the user exsists
+
+        # Check if the user exists
         user = await user_service.get_user_by_email(db, email)
 
-        if not user:
-            # Create a user if doesn't exsist
+        if user is None:
+            # Create user in UserModel
             user_data = {
-                'email': email,
+                'email'   : email,
                 'username': username,
-                'google_uuid': google_uuid,
-                'google_refresh_token': refresh_token or '' # fall back test for now (i think this fallback is not needed as we set access_type = offline & prompt = consent)
             }
-            user = await user_service.create_user(db, user_data)
-
-            # Create Google Drive Folder by Our Name
-            if user.drive_folder_id is None: 
-                try:
-                    folder_id = await google_auth_service.create_drive_folder(access_token)
-                    # update the db
-                    user = await user_service.update_drive_folder(db, user.id, folder_id)
-                except Exception as fe:
-                    print(f"Warning: Failed to create Drive folder: {fe}")
+    
+            try:
+                user = await user_service.create_user(db, user_data)
+                user_auth = await user_service.create_user_auth(
+                    db               = db,
+                    user_id          = user.id,
+                    provider_user_id = google_uuid,
+                    secret_token     = refresh_token,
+                    auth_type        = AuthType.GOOGLE,
+                )
+                await user_service.create_user_drive(
+                    db           = db,
+                    user_id      = user.id,
+                    drive_type   = DriveType.GOOGLE_DRIVE,
+                    user_auth_id = user_auth.id,
+                    totp_secret  = None,
+                    folder_id    = None,
+                    folder_name  = None,
+                    url_slug     = None,
+                )
+            except Exception as fe:
+                deleted = await user_service.delete_user(db, user.id)
+                if deleted is None:
+                    print(f"CRITICAL: user entry created in db with id : {user.id}! Delete manually!") # NEED BETTER APPROACH HERE
+                print(f"Warning: Failed to create user and link google drive: {fe}")
         else:
             # Existing user - update refresh token if we got a new one
             if refresh_token:
-                user = await user_service.update_refresh_token(db, user.id, refresh_token)
-    
+                user_auth = await user_service.update_refresh_token(
+                    db            = db,
+                    user_id       = user.id, 
+                    auth_type     = AuthType.GOOGLE,
+                    refresh_token = refresh_token,
+                )
+
+                if user_auth is None:
+                    raise Exception(f"No user auth found for user_id: {user.id} and auth_type: {AuthType.GOOGLE}")
+
         # Generate our JWT token
         jwt_token = jwt_manager.create_user_token(user.id, user.email)
 
-        # Step 7: Prepare response
-        user_response = UserResponse.model_validate(user)
+        # Prepare response - get additional info for user response
+        user_drive = await user_service.get_user_drive(db, user.id, DriveType.GOOGLE_DRIVE)
+
+        if user_drive is None:
+            raise Exception(f"There is no user_drive entry with user_id : {user.id} and drive_type : {DriveType.GOOGLE_DRIVE}")
+
+        user_response = UserResponse(
+            id          = user.id,
+            username    = user.username,
+            email       = user.email,
+            totp_secret = user_drive.totp_secret,
+            folder_id   = user_drive.folder_id,
+            folder_name = user_drive.folder_name,
+            url_slug    = user_drive.url_slug,
+        )
 
         return AuthResponse(
             access_token = jwt_token,
             user         = user_response
         )
     except HTTPException:
-        raise ## ? raise what? (for @Dhruvil)
+        raise
 
     except Exception as e:
         raise HTTPException(
@@ -103,24 +139,87 @@ async def google_callback(
             detail      = f'Authentication Failed! {e}'
         )
 
-# Current user info for dashbord or whatsoever
-@auth_router.get('/me', response_model = UserResponse)
-async def get_current_user(current_user: UserModel = Depends(get_current_user)):    
-    return UserResponse.model_validate(current_user)
+# Current user info for dashboard
+@auth_router.get('/me', response_model=UserResponse)
+async def get_me(
+    user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    user_drive = await user_service.get_user_drive(db, user.id, DriveType.GOOGLE_DRIVE)
 
-# kinda middleware
-@auth_router.get('/validate-token')
+    if user_drive is None:
+        raise Exception(f"There is no user_drive entry with user_id : {user.id} and drive_type : {DriveType.GOOGLE_DRIVE}")
+
+    return UserResponse(
+        id          = user.id,
+        username    = user.username,
+        email       = user.email,
+        totp_secret = user_drive.totp_secret,
+        folder_id   = user_drive.folder_id,
+        folder_name = user_drive.folder_name,
+        url_slug    = user_drive.url_slug,
+    )
+
+@auth_router.post("/me/update-drive-folder", response_model=FolderUpdateResponse, status_code=status.HTTP_200_OK)
+async def update_drive_folder(
+    request: FolderUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    user: UserModel = Depends(get_current_user),
+):
+    try:
+        auth_secret = await user_service.get_auth_secret_by_user_id_drive_type(
+            db         = db,
+            user_id    = user.id,
+            drive_type = request.drive_type
+        )
+        if auth_secret is None:
+            raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail      = "Could not find auth secret for the current user!"
+            )
+        access_token = await google_auth_service.get_access_token(auth_secret)
+        folder_id = await google_auth_service.create_drive_folder(
+            request.folder_name,
+            access_token
+        )
+        user_drive = await user_service.update_drive_folder_id_and_name(
+            db          = db,
+            user_id     = user.id,
+            drive_type  = request.drive_type,
+            folder_id   = folder_id,
+            folder_name = request.folder_name
+        )
+
+        if user_drive is None:
+            raise HTTPException(
+                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail      = "Could not update folder_id and folder_name for the current user in db!"
+            )
+
+        return {
+            "folder_id": folder_id, 
+            "folder_name": request.folder_name
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail      = f"Could not create folder in drive : {str(e)}"
+        )
+
+# Token validation middleware
+@auth_router.get('/validate-token', status_code=status.HTTP_200_OK)
 async def validate_token(token: str):
     payload = jwt_manager.verify_token(token)
     if payload:
         return {
-            "valid": True,
-            "user_id": payload.get("user_id"),
-            "email": payload.get("email")
+            "valid"   : True,
+            "email"   : payload.get("email"),
+            "user_id" : payload.get("user_id"),
         }
-    
     else:
-        return{
-            'valid': False,
-            'detail': 'Invalid or Expired Token'
+        return {
+            'valid'  : False,
+            'detail' : 'Invalid or Expired Token'
         }

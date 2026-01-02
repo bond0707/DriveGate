@@ -3,7 +3,7 @@ from app.core.config import settings
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 
-class JWTManager():
+class JWTManager:
     """
     Our tokens contain:
     - user_id: To identify which user

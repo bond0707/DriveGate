@@ -1,8 +1,13 @@
 from typing import Optional, Tuple
 from sqlalchemy.exc import IntegrityError
-from app.models.UserModel import UserModel
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.users import UserModel
+from app.core.enums import AuthType, DriveType
+from app.models.user_auth import UserAuthModel
+from app.models.user_drive import UserDriveModel
+
 
 class UserService:
     async def get_user_by_id(
@@ -10,23 +15,19 @@ class UserService:
         db: AsyncSession,
         user_id: int
     ) -> Optional[UserModel]:
-        
         """Gets a user using ID."""
-
         try:
-            # Faster cache-based lookups (only works for primary keys)
-            return await db.get(UserModel, user_id) 
+            # Faster lookups for primary keys (cache-based)
+            return await db.get(UserModel, user_id)
         except Exception as e:
             raise Exception(f"Failed to get the user by ID : {e}")
 
     async def get_user_by_email(
         self,
         db: AsyncSession,
-        email: str, 
+        email: str,
     ) -> Optional[UserModel]:
-        
         """Gets a user using E-mail."""
-
         try:
             query = select(UserModel).where(UserModel.email == email)
             result = await db.execute(query)
@@ -34,212 +35,280 @@ class UserService:
         except Exception as e:
             raise Exception(f"Failed to get the user by E-mail : {e}")
 
-    async def get_totp_secret_by_url_slug(
-        self, 
+    async def get_user_drive(
+        self,
         db: AsyncSession,
-        url_slug: str, 
-    ) -> Optional[str]:
-
-        """Gets TOTP Secret of a user from their url slug"""
-
-        try:
-            query = select(UserModel.totp_secret).where(UserModel.upload_url == url_slug)
-            result = await db.execute(query)
-            result = result.scalar_one_or_none()
-
-            if result is None:
-                return None
-            else:
-                return result
-        except Exception as e:
-            raise Exception(f"Failed to get TOTP Secret: {e}")
-    
-    async def get_drive_credentials_by_url_slug(
-        self, 
-        db: AsyncSession,
-        url_slug: str, 
-    ) -> Optional[Tuple]:
-
-        """Gets drive folder id and refresh token of a user from their url slug"""
-
+        user_id: int,
+        drive_type: DriveType 
+    ) -> Optional[UserDriveModel]:
+        """Gets user drive configuration."""
         try:
             query = (
-                select(UserModel.drive_folder_id, UserModel.google_refresh_token)
-                .where(UserModel.upload_url == url_slug)
+                select(UserDriveModel)
+                .where(UserDriveModel.user_id == user_id)
+                .where(UserDriveModel.drive_type == drive_type.value)
+            )
+            result = await db.execute(query)
+
+            user_drive = result.scalar_one_or_none()
+            return user_drive
+        except Exception as e:
+            raise Exception(f"Failed to get user drive : {e}")
+
+    async def get_totp_secret_by_url_slug(
+        self,
+        db: AsyncSession,
+        url_slug: str,
+    ) -> Optional[str]:
+        """Gets TOTP Secret of a user from their url slug."""
+        try:
+            query = (
+                select(UserDriveModel.totp_secret)
+                .where(UserDriveModel.url_slug == url_slug)
+            )
+
+            result = await db.execute(query)
+            return result.scalar_one_or_none()
+        except Exception as e:
+            raise Exception(f"Failed to get TOTP Secret : {e}")
+    
+    async def get_auth_secret_by_user_id_drive_type(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        drive_type: DriveType
+    ):
+        try:
+            query = (
+                select(UserAuthModel.auth_secret)
+                .join(UserDriveModel, UserAuthModel.id == UserDriveModel.user_auth_id)
+                .where(UserAuthModel.user_id == user_id)
+                .where(UserDriveModel.drive_type == drive_type.value)
+            )
+            result = await db.execute(query)
+            return result.scalar_one_or_none()
+        except Exception as e:
+            raise Exception(f"Failed to get Auth Secret : {e}")
+
+    async def get_drive_credentials_by_url_slug(
+        self,
+        db: AsyncSession,
+        url_slug: str,
+    ) -> Optional[Tuple[str, str]]:
+        """Gets drive folder id and refresh token of a user from their url slug."""
+        try:
+            query = (
+                select(UserDriveModel.folder_id, UserAuthModel.auth_secret)
+                .join(
+                    UserAuthModel, 
+                    UserDriveModel.user_auth_id == UserAuthModel.id
+                )
+                .where(UserDriveModel.url_slug == url_slug)
             )
             result = await db.execute(query)
             row = result.one_or_none()
 
             if row is None:
                 return None
-            else:
-                return (row.drive_folder_id, row.google_refresh_token)
+            return (row.folder_id, row.auth_secret)
         except Exception as e:
-            raise Exception(f"Failed to get Drive Folder ID : {e}")
+            raise Exception(f"Failed to get Drive Credentials: {e}")
 
     async def create_user(
-        self, 
-        db: AsyncSession, 
+        self,
+        db: AsyncSession,
         user_data: dict
     ) -> UserModel:
-        
-        """Creates a user (insertion in DB).(This requires security checks later!!!!)"""
-
+        """Creates a user (insertion in DB)."""
         try:
             user = UserModel(**user_data)
             db.add(user)
             await db.commit()
-            await db.refresh(user) # Get auto-generated Id
+            await db.refresh(user)
             return user
         except IntegrityError as e:
             await db.rollback()
-            if "google_uuid" in str(e):
-                raise Exception("User with this Google ID already exists")
-            elif "email" in str(e):
+            if "email" in str(e):
                 raise Exception("User with this email already exists")
             else:
                 raise Exception(f"Database error: {str(e)}")
         except Exception as e:
             await db.rollback()
-            raise Exception(f"Unknown exception occured : {str(e)}")
+            raise Exception(f"Unknown exception occurred: {str(e)}")
+
+    async def create_user_auth(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        provider_user_id: str,
+        secret_token: str,
+        auth_type: AuthType
+    ) -> UserAuthModel:
+        """Creates a user auth entry (OAuth credentials)."""
+        try:
+            user_auth = UserAuthModel(
+                user_id          = user_id,
+                auth_type        = auth_type.value,
+                auth_secret      = secret_token,
+                provider_user_id = provider_user_id,
+            )
+            db.add(user_auth)
+            await db.commit()
+            await db.refresh(user_auth)
+            return user_auth
+        except IntegrityError as e: # BETTER EXCEPTION HANDLING NEEDED
+            await db.rollback()
+            if "provider_user_id" in str(e):
+                raise Exception("User with this provider ID already exists")
+            else:
+                raise Exception(f"Database error: {str(e)}")
+        except Exception as e:
+            await db.rollback()
+            raise Exception(f"Failed to create user auth: {str(e)}")
+
+    async def create_user_drive(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        drive_type: DriveType,
+        user_auth_id: int,
+        totp_secret: str,
+        folder_id: str,
+        folder_name: str,
+        url_slug: str,
+    ) -> UserDriveModel:
+        """Creates a user drive entry."""
+        try:
+            user_drive = UserDriveModel(
+                user_id      = user_id,
+                drive_type   = drive_type.value,
+                user_auth_id = user_auth_id,
+                totp_secret  = totp_secret,
+                folder_id    = folder_id,
+                folder_name  = folder_name,
+                url_slug     = url_slug
+            )
+            db.add(user_drive)
+            await db.commit()
+            await db.refresh(user_drive)
+            return user_drive
+        except IntegrityError as e:
+            await db.rollback()
+            raise Exception(f"Database error: {str(e)}")
+        except Exception as e:
+            await db.rollback()
+            raise Exception(f"Failed to create user drive: {str(e)}")
 
     async def update_refresh_token(
         self,
         db: AsyncSession,
         user_id: int,
-        refresh_token: str
-    ) -> UserModel:
-        
-        """Update the refresh token of the user."""
-
+        auth_type: AuthType,
+        refresh_token: str,
+    ) -> Optional[UserAuthModel]:
+        """Update the refresh token (secret_token) of the user."""
         try:
             query = (
-                update(UserModel)
-                .where(UserModel.id == user_id)
-                .values(google_refresh_token = refresh_token)
-                .returning(UserModel)
+                update(UserAuthModel)
+                .where(UserAuthModel.user_id == user_id)
+                .where(UserAuthModel.auth_type == auth_type.value)
+                .values(auth_secret = refresh_token)
+                .returning(UserAuthModel)
             )
             result = await db.execute(query)
-            user = result.scalar_one_or_none()
+            user_auth = result.scalar_one_or_none()
             await db.commit()
-
-            if user is None:
-                raise Exception(f"No user found with the id : {user_id}")
-
-            return user
+            return user_auth
         except IntegrityError as e:
             await db.rollback()
-            raise Exception(f"Account Refresh Token needs to be unique! Error: {e}")
-
-    async def update_drive_folder(
-        self,
-        db: AsyncSession,
-        user_id: int, 
-        folder_id: str
-    ) -> UserModel:
-
-        """Update a user's google drive folder id"""
-
-        try:  
-            query = (
-                update(UserModel)
-                .where(UserModel.id == user_id)
-                .values(drive_folder_id = folder_id)
-                .returning(UserModel)
-            )
-            result = await db.execute(query)
-            user = result.scalar_one_or_none()
-            await db.commit()
-
-            if user is None:
-                raise Exception(f"No user found with the id : {user_id}")
-
-            return user
-        except IntegrityError as e:
-            await db.rollback()
-            raise Exception(f"Google Drive Folder ID needs to be unique! Error: {e}")
+            raise Exception(f"Failed to update refresh token: {e}")
 
     async def update_totp_secret(
-        self, 
+        self,
         db: AsyncSession,
-        user_id: int, 
-        totp_secret: str
-    ) -> UserModel:
-
-        """Update a user's TOTP secret"""
-
+        user_id: int,
+        totp_secret: str,
+        drive_type: DriveType
+    ) -> Optional[UserDriveModel]:
+        """Update a user's TOTP secret."""
         try:
             query = (
-                update(UserModel)
-                .where(UserModel.id == user_id)
-                .values(totp_secret = totp_secret)
-                .returning(UserModel)
+                update(UserDriveModel)
+                .where(UserDriveModel.user_id == user_id)
+                .where(UserDriveModel.drive_type == drive_type.value)
+                .values(totp_secret=totp_secret)
+                .returning(UserDriveModel)
             )
             result = await db.execute(query)
-            user = result.scalar_one_or_none()
+            user_drive = result.scalar_one_or_none()
             await db.commit()
-
-            if user is None:
-                raise Exception(f"No user found with the id : {user_id}")
-
-            return user
+            return user_drive
         except IntegrityError as e:
             await db.rollback()
             raise Exception(f"TOTP Secret needs to be unique! Error: {e}")
-
-    async def update_url_slug(
-        self, 
+    
+    async def update_drive_folder_id_and_name(
+        self,
         db: AsyncSession,
-        user_id: int, 
-        url_slug: str
-    ) -> UserModel:
-
-        """Update a user's URL slug"""
-
+        user_id: int,
+        drive_type: DriveType,
+        folder_id: str,
+        folder_name: str,
+    ):
         try:
             query = (
-                update(UserModel)
-                .where(UserModel.id == user_id)
-                .values(upload_url = url_slug)
-                .returning(UserModel)
+                update(UserDriveModel)
+                .where(UserDriveModel.user_id == user_id)
+                .where(UserDriveModel.drive_type == drive_type.value)
+                .values(folder_id = folder_id, folder_name = folder_name)
+                .returning(UserDriveModel)
             )
             result = await db.execute(query)
-            user = result.scalar_one_or_none()
+            user_drive = result.scalar_one_or_none()
             await db.commit()
+            return user_drive
+        except Exception as e:
+            await db.rollback()
+            raise Exception(f"Failed to update folder_id and folder_name for user_id : {user_id} and drive_type : {drive_type.value}")
 
-            if user is None:
-                raise Exception(f"No user found with the id : {user_id}")
-
-            return user
+    async def update_url_slug(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        url_slug: str,
+        drive_type: DriveType
+    ) -> Optional[UserDriveModel]:
+        """Update a user's URL slug."""
+        try:
+            query = (
+                update(UserDriveModel)
+                .where(UserDriveModel.user_id == user_id)
+                .where(UserDriveModel.drive_type == drive_type.value)
+                .values(url_slug = url_slug)
+                .returning(UserDriveModel)
+            )
+            result = await db.execute(query)
+            user_drive = result.scalar_one_or_none()
+            await db.commit()
+            return user_drive
         except IntegrityError as e:
             await db.rollback()
             raise Exception(f"URL Slug needs to be unique! Error: {e}")
-
-    async def delete_user(
-        self, 
-        db: AsyncSession,
-        user_id: int
-    ) -> Tuple[int, str, str]:
-
-        """Deletes a user from the db. (need to add 'delete account' in frontend)"""
     
+    async def delete_user(db: AsyncSession, user_id: int) -> Optional[UserModel]:
         try:
             query = (
                 delete(UserModel)
                 .where(UserModel.id == user_id)
-                .returning(UserModel.id, UserModel.username, UserModel.email)
+                .returning(UserModel)
             )
             result = await db.execute(query)
-            user = result.one_or_none()
+            user = result.scalar_one_or_none()
             await db.commit()
-
-            if user is None:
-                raise Exception(f"No user found with the id : {user_id}")
-
-            return (user.id, user.username, user.email)
-
+            return user
         except Exception as e:
             await db.rollback()
-            raise Exception(f"Failed to delete user : {e}")
+            raise Exception(f"Failed to delete user with id : {user_id}")
+
 
 user_service = UserService()

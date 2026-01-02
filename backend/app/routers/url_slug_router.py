@@ -1,8 +1,9 @@
 import httpx
 from app.schemas.drive import *
 from app.core.config import settings
+from app.core.enums import DriveType
+from app.models.users import UserModel
 from sqlalchemy.exc import IntegrityError
-from app.models.UserModel import UserModel
 from app.database.connection import get_db
 from fastapi.exceptions import HTTPException
 from fastapi import APIRouter, status, Depends
@@ -20,8 +21,16 @@ async def update_url_slug(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        user = await user_service.update_url_slug(db, user.id, request.url_slug)
-        return {"url_slug": user.upload_url}   
+        user_drive = await user_service.update_url_slug(
+            db         = db,
+            user_id    = user.id,
+            url_slug   = request.url_slug,
+            drive_type = DriveType.GOOGLE_DRIVE
+        )
+        if user_drive is None:
+            raise Exception(f"No user drive found for user_id : {user.id} and drive_type : {DriveType.GOOGLE_DRIVE}")
+
+        return {"url_slug": user_drive.url_slug}
     except IntegrityError as e:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
@@ -47,18 +56,26 @@ async def get_upload_uri(
             detail      = "Invalid token payload"
         )
 
-    folder_id, refresh_token = await user_service.get_drive_credentials_by_url_slug(db, url_slug)
+    credentials = await user_service.get_drive_credentials_by_url_slug(db, url_slug)
 
-    if folder_id is None:
+    if credentials is None:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail      = "Drive credentials not found for this URL slug!"
+        )
+
+    folder_id, refresh_token = credentials
+
+    if not folder_id:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
             detail      = "Drive Folder ID not found!"
         )
 
-    if refresh_token is None:
+    if not refresh_token:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail      = "Google Refresh Token not found!" 
+            detail      = "Google Refresh Token not found!"
         )
 
     google_access_token = await google_auth_service.get_access_token(refresh_token)
@@ -73,16 +90,15 @@ async def get_upload_uri(
     body = {
         "name": file_metadata.file_name,
         "parents": [folder_id],
-        "md5Checksum": file_metadata.md5_checksum
     }
 
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            url     =  settings.GOOGLE_DRIVE_UPLOAD_REQUEST_URL,
-            headers =  headers,
-            json    =  body
+            url     = settings.GOOGLE_DRIVE_UPLOAD_REQUEST_URL,
+            headers = headers,
+            json    = body
         )
-    
+
     if response.status_code != status.HTTP_200_OK:
         raise HTTPException(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
