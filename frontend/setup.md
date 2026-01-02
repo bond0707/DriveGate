@@ -2,8 +2,6 @@
 
 The frontend is built with Next.js 14 (App Router) and Material-UI (MUI) for the user interface. It provides the following pages for the TOTP-based secure upload system.
 
----
-
 ## Setup Instructions
 
 ### Step 1: Create Next.js Project
