@@ -2,13 +2,9 @@
 
 A web app that lets users upload data to their own google drives without logging in using TOTP.
 
----
-
 ## **Schema Diagram**
 
 [Click here to view the schema diagram.](https://drawsql.app/teams/goon-squad/diagrams/schema-diagram "TOTP Drive Uploader Schema Diagram")
-
----
 
 ## **TOTP Flow**
 
@@ -31,8 +27,6 @@ A web app that lets users upload data to their own google drives without logging
 * Verifies the provided TOTP code against the stored secret
 * Returns `is_valid: true` (Response 200 OK) or `is_valid: false` (Error response (due to @Dhruvil))
 
----
-
 ## Upload Flow
 
 1. User configures TOTP and URL slug on the website.
@@ -45,8 +39,6 @@ A web app that lets users upload data to their own google drives without logging
 8. Backend returns Google Drive resumable upload URL.
 9. Remote PC uploads file directly to Google Drive.
 10. Upload token expires or is invalidated after use.
-
----
 
 ## Future Updates
 
