@@ -67,8 +67,8 @@ class GoogleAuthService:
             # Checking if rizz worked
             if response.status_code != status.HTTP_200_OK:
                 # Kirtan's fault not mine (yeah sure mf)
-                error_details = response.json().get("error description",'Unkown error')
-                raise Exception(f'Token Exchanged Failed Because of Dhruvil: {error_details}')
+                error_details = response.json().get("error_description", 'Unkown error')
+                raise Exception(f'Token Exchange Failed Because of Dhruvil : {error_details}')
 
             return response.json()
 
@@ -82,7 +82,7 @@ class GoogleAuthService:
             return response.json()
 
     # Creating drive folder as we discussed chigga change if you want to
-    async def create_drive_folder(self, access_token: str) -> str:
+    async def create_drive_folder(self, folder_name: str, access_token: str) -> str:
         try:
             # Create credentials object from access token
             credentials = Credentials(token = access_token)
@@ -94,8 +94,6 @@ class GoogleAuthService:
                 credentials = credentials
             )
 
-            # Folder name it's temp for now change if you want (nah it works for now)
-            folder_name= f'TOTP_UPLOADER'
             folder_metadata = {
                 'name': folder_name,
                 'mimeType': 'application/vnd.google-apps.folder',
@@ -111,9 +109,9 @@ class GoogleAuthService:
             return folder.get('id')
 
         except HttpError as e:
-            raise Exception(f'Google Drive API Error: {e}')
+            raise Exception(f'Google Drive API Error : {e}')
         except Exception as er:
-            raise Exception(f'FAiled to Create Drive Uploader: {er}')
+            raise Exception(f'Failed to Create Drive Folder : {er}')
 
     # Chal have longterm mate olu kari dau credentials
     def create_google_credentials(self, token_data: Dict[str, Any]) -> Credentials:

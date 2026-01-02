@@ -8,10 +8,6 @@ class VerifyTOTPRequest(BaseModel):
     totp: str
     url_slug: str
 
-class VerifyURLSlugRequest(BaseModel):
-    totp: str
-    url_slug: str
-
 class TOTPSecretResponse(BaseModel):
     totp_secret: str
     provisioning_uri: str

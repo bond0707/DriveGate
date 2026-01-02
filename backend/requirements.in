@@ -1,0 +1,9 @@
+httpx
+pyotp
+asyncpg
+pydantic
+python-jose
+python-dotenv
+fastapi[standard]
+sqlalchemy[asyncio]
+google-api-python-client
