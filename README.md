@@ -4,6 +4,12 @@ A web app that lets users upload data to their own google drives without logging
 
 ---
 
+## **Schema Diagram**
+
+[Click here to view the schema diagram.](https://drawsql.app/teams/goon-squad/diagrams/schema-diagram "TOTP Drive Uploader Schema Diagram")
+
+---
+
 ## **TOTP Flow**
 
 ### **Initial Setup (First-time TOTP Configuration)**
