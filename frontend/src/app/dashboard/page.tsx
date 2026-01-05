@@ -16,6 +16,12 @@ import {
     CircularProgress,
     Tooltip,
     useTheme,
+    useColorScheme,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Divider,
 } from '@mui/material';
 import {
     CloudUpload,
@@ -28,10 +34,15 @@ import {
     Refresh,
     QrCode2,
     CheckCircle,
+    DeleteForever,
+    Folder,
+    Warning,
+    Favorite,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import ThemeToggle from '@/components/ThemeToggle';
 import SquircleLoader from '@/components/SquircleLoader';
 
@@ -44,15 +55,19 @@ function generateMockTotp(): string {
 export default function DashboardPage() {
     const router = useRouter();
     const theme = useTheme();
+    const { mode } = useColorScheme();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [totpEnabled, setTotpEnabled] = useState(false);
     const [uploadLink, setUploadLink] = useState<string | null>(null);
+    const [folderName, setFolderName] = useState<string | null>(null);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [totpCode, setTotpCode] = useState(generateMockTotp());
     const [totpProgress, setTotpProgress] = useState(100);
     const [userName] = useState('User');
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [thankYouDialogOpen, setThankYouDialogOpen] = useState(false);
 
     const loaderColor = theme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
 
@@ -76,9 +91,17 @@ export default function DashboardPage() {
             const isTotpSetup = localStorage.getItem('totp_enabled') === 'true';
             const link = localStorage.getItem('upload_link');
 
+
             if (!isTotpSetup) {
-                router.push('/totp-setup');
-                return;
+                // Check if we're skipping setup (coming back from reset)
+                const skipTotp = localStorage.getItem('skip_totp_setup');
+                if (skipTotp) {
+                    localStorage.removeItem('skip_totp_setup');
+                    localStorage.setItem('totp_enabled', 'true');
+                } else {
+                    router.push('/setup-totp');
+                    return;
+                }
             }
 
             if (!link) {
@@ -86,8 +109,22 @@ export default function DashboardPage() {
                 return;
             }
 
+            const folder = localStorage.getItem('folder_name');
+            if (!folder) {
+                // If coming from a cancel action (skip_setup flag), just use default
+                const skipSetup = localStorage.getItem('skip_folder_setup');
+                if (skipSetup) {
+                    localStorage.removeItem('skip_folder_setup');
+                    localStorage.setItem('folder_name', 'DriveGate Uploads');
+                } else {
+                    router.push('/setup-folder');
+                    return;
+                }
+            }
+
             setTotpEnabled(true);
             setUploadLink(link);
+            setFolderName(localStorage.getItem('folder_name') || 'DriveGate Uploads');
             setIsLoading(false);
         };
 
@@ -107,6 +144,27 @@ export default function DashboardPage() {
         router.push('/login');
     };
 
+    const handleDeleteAccount = () => {
+        handleClose();
+        setDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        setDeleteDialogOpen(false);
+        // Clear all user data
+        localStorage.removeItem('totp_enabled');
+        localStorage.removeItem('upload_link');
+        localStorage.removeItem('folder_name');
+        localStorage.removeItem('totp_mode');
+        localStorage.removeItem('link_mode');
+        // Show thank you message
+        setThankYouDialogOpen(true);
+        // Auto redirect after 3 seconds
+        setTimeout(() => {
+            router.push('/login');
+        }, 3000);
+    };
+
     const handleCopyLink = () => {
         const fullUrl = `${window.location.origin}/${uploadLink}`;
         navigator.clipboard.writeText(fullUrl);
@@ -123,12 +181,12 @@ export default function DashboardPage() {
     const handleResetTotp = () => {
         localStorage.removeItem('totp_enabled');
         localStorage.setItem('totp_mode', 'reset');
-        router.push('/totp-setup');
+        router.push('/setup-totp');
     };
 
     const handleRescanTotp = () => {
         localStorage.setItem('totp_mode', 'rescan');
-        router.push('/totp-setup');
+        router.push('/setup-totp');
     };
 
     if (isLoading) {
@@ -152,14 +210,14 @@ export default function DashboardPage() {
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             <AppBar position="static" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
                 <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-                    <CloudUpload sx={{ mr: 1.5, color: 'primary.main', fontSize: { xs: 24, sm: 28 } }} />
+                    <Image src={mode === 'dark' ? '/logo-dark.svg' : '/logo-light.svg'} alt="DriveGate" width={28} height={28} style={{ marginRight: 12 }} />
                     <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700, color: 'text.primary', fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                        TOTP Drive
+                        DriveGate
                     </Typography>
                     <ThemeToggle />
                     <IconButton size="small" onClick={handleMenu} sx={{ ml: 1 }}>
-                        <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                            <AccountCircle />
+                        <Avatar sx={{ width: 32, height: 32, bgcolor: 'transparent', border: '2px solid #0D9488' }}>
+                            <AccountCircle sx={{ color: '#0D9488' }} />
                         </Avatar>
                     </IconButton>
                     <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
@@ -167,11 +225,16 @@ export default function DashboardPage() {
                             <Logout sx={{ mr: 1 }} fontSize="small" />
                             Logout
                         </MenuItem>
+                        <Divider />
+                        <MenuItem onClick={handleDeleteAccount} sx={{ color: 'error.main' }}>
+                            <DeleteForever sx={{ mr: 1 }} fontSize="small" />
+                            Delete Account
+                        </MenuItem>
                     </Menu>
                 </Toolbar>
             </AppBar>
 
-            <Container maxWidth="md" sx={{ mt: { xs: 3, sm: 6 }, mb: 4, px: { xs: 2, sm: 3 } }}>
+            <Container maxWidth="lg" sx={{ mt: { xs: 3, sm: 6 }, mb: 4, px: { xs: 2, sm: 3 } }}>
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -182,7 +245,7 @@ export default function DashboardPage() {
                     </Typography>
                 </motion.div>
 
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: { xs: 2, sm: 3 }, mt: { xs: 3, sm: 4 } }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: { xs: 2, sm: 3 }, mt: { xs: 3, sm: 4 } }}>
                     {/* TOTP Card */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -206,7 +269,7 @@ export default function DashboardPage() {
                                     <Box sx={{
                                         p: 1,
                                         borderRadius: 2,
-                                        bgcolor: 'primary.main',
+                                        bgcolor: '#0D9488',
                                         color: 'white',
                                         display: 'flex'
                                     }}>
@@ -380,6 +443,73 @@ export default function DashboardPage() {
                             </Box>
                         </MotionPaper>
                     </motion.div>
+
+                    {/* Folder Name Card */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                    >
+                        <MotionPaper
+                            whileHover={{ y: -3 }}
+                            sx={{
+                                p: { xs: 3, sm: 4 },
+                                bgcolor: 'background.paper',
+                                border: 1,
+                                borderColor: 'divider',
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                                <Box sx={{
+                                    p: 1,
+                                    borderRadius: 2,
+                                    bgcolor: '#F59E0B',
+                                    color: 'white',
+                                    display: 'flex'
+                                }}>
+                                    <Folder sx={{ fontSize: 20 }} />
+                                </Box>
+                                <Typography variant="subtitle1" fontWeight={600}>Upload Folder</Typography>
+                            </Box>
+                            <Box sx={{
+                                bgcolor: 'action.hover',
+                                p: 2,
+                                borderRadius: 2,
+                                mb: 2,
+                                fontSize: { xs: '0.9rem', sm: '1rem' },
+                                wordBreak: 'break-all',
+                                flex: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                minHeight: 60,
+                                fontWeight: 500,
+                            }}>
+                                {folderName}
+                            </Box>
+                            <Box sx={{
+                                display: 'flex',
+                                bgcolor: 'action.hover',
+                                borderRadius: 100,
+                                p: 0.5,
+                                gap: 0.5,
+                            }}>
+                                <Button
+                                    size="small"
+                                    startIcon={<Edit sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+                                    onClick={() => {
+                                        localStorage.setItem('folder_mode', 'update');
+                                        router.push('/setup-folder');
+                                    }}
+                                    sx={{ flex: 1, borderRadius: 100, py: 0.75, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                                >
+                                    Change
+                                </Button>
+                            </Box>
+                        </MotionPaper>
+                    </motion.div>
                 </Box>
 
                 {/* Upload Files Card */}
@@ -387,7 +517,7 @@ export default function DashboardPage() {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
+                        transition={{ delay: 0.5 }}
                     >
                         <MotionPaper
                             whileHover={{ scale: 1.01 }}
@@ -414,6 +544,91 @@ export default function DashboardPage() {
                     </motion.div>
                 </Box>
             </Container>
+
+            {/* Delete Account Confirmation Dialog */}
+            <Dialog
+                open={deleteDialogOpen}
+                onClose={() => setDeleteDialogOpen(false)}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            borderRadius: 3,
+                            maxWidth: 400,
+                        }
+                    }
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 2 }}>
+                    <Box sx={{
+                        p: 1,
+                        borderRadius: 2,
+                        bgcolor: '#FFF3E0',
+                        color: '#E65100',
+                        display: 'flex'
+                    }}>
+                        <Warning />
+                    </Box>
+                    Delete Account?
+                </DialogTitle>
+                <DialogContent sx={{ pb: 3, align: "center" }}>
+                    <Typography color="text.secondary">
+                        All your TOTP secrets and Drive data will be deleted <strong>instantly and permanently</strong>. This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5, pt: 0, gap: 1.5 }}>
+                    <Button
+                        variant="outlined"
+                        onClick={() => setDeleteDialogOpen(false)}
+                        sx={{ borderRadius: 2, flex: 1 }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        onClick={handleConfirmDelete}
+                        sx={{ borderRadius: 2, flex: 1 }}
+                    >
+                        Delete Account
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Thank You Dialog */}
+            <Dialog
+                open={thankYouDialogOpen}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            borderRadius: 3,
+                            maxWidth: 400,
+                            textAlign: 'center',
+                        }
+                    }
+                }}
+            >
+                <DialogContent sx={{ py: 4, px: 3 }}>
+                    <Box sx={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: '50%',
+                        bgcolor: 'primary.light',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mx: 'auto',
+                        mb: 2,
+                    }}>
+                        <Favorite sx={{ fontSize: 32, color: 'primary.main' }} />
+                    </Box>
+                    <Typography variant="h5" fontWeight={700} gutterBottom>
+                        Thanks for using DriveGate!
+                    </Typography>
+                    <Typography color="text.secondary" sx={{ mb: 2 }}>
+                        We are sad to see you go. Your account has been deleted.
+                    </Typography>
+                </DialogContent>
+            </Dialog>
 
             <Snackbar
                 open={snackbarOpen}

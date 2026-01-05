@@ -50,6 +50,27 @@ function TOTPSetupContent() {
         }
     }, []);
 
+    // Handle browser back button
+    useEffect(() => {
+        const handlePopState = () => {
+            localStorage.removeItem('totp_mode');
+            if (mode === 'reset') {
+                localStorage.setItem('totp_enabled', 'true');
+            }
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [mode]);
+
+    // Auto-focus first box when entering verify step
+    useEffect(() => {
+        if (step === 'verify') {
+            setTimeout(() => {
+                inputRefs.current[0]?.focus();
+            }, 100);
+        }
+    }, [step]);
+
     const mockSecretKey = 'JBSWY3DPEHPK3PXP';
 
     // Only show close if coming from dashboard (rescan or reset mode)
@@ -57,6 +78,11 @@ function TOTPSetupContent() {
 
     const handleClose = () => {
         localStorage.removeItem('totp_mode');
+        // For reset mode, set flag to skip TOTP redirect since we're canceling
+        if (mode === 'reset') {
+            localStorage.setItem('skip_totp_setup', 'true');
+            localStorage.setItem('totp_enabled', 'true'); // Restore TOTP enabled state
+        }
         router.push('/dashboard');
     };
 
@@ -64,19 +90,37 @@ function TOTPSetupContent() {
         if (value.length > 1) value = value.slice(-1);
         if (!/^\d*$/.test(value)) return;
 
+        // Only allow input if all previous boxes are filled
+        if (value && index > 0) {
+            const allPreviousFilled = otp.slice(0, index).every(d => d !== '');
+            if (!allPreviousFilled) return;
+        }
+
         const newOtp = [...otp];
         newOtp[index] = value;
         setOtp(newOtp);
         setError('');
 
+        // Delay focus to allow React to re-render and enable the next box
         if (value && index < 5) {
-            inputRefs.current[index + 1]?.focus();
+            setTimeout(() => {
+                inputRefs.current[index + 1]?.focus();
+            }, 0);
         }
     };
 
     const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
         if (e.key === 'Backspace' && !otp[index] && index > 0) {
             inputRefs.current[index - 1]?.focus();
+        }
+    };
+
+    const handleFocus = (index: number) => {
+        // Find the first empty box
+        const firstEmptyIndex = otp.findIndex(d => d === '');
+        // If clicking on a box beyond the first empty, redirect focus
+        if (firstEmptyIndex !== -1 && index > firstEmptyIndex) {
+            inputRefs.current[firstEmptyIndex]?.focus();
         }
     };
 
@@ -177,7 +221,7 @@ function TOTPSetupContent() {
                                     width: { xs: 60, sm: 80 },
                                     height: { xs: 60, sm: 80 },
                                     borderRadius: '50%',
-                                    bgcolor: 'primary.main',
+                                    bgcolor: '#0D9488',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -306,7 +350,7 @@ function TOTPSetupContent() {
                                     width: { xs: 60, sm: 80 },
                                     height: { xs: 60, sm: 80 },
                                     borderRadius: '50%',
-                                    bgcolor: 'secondary.main',
+                                    bgcolor: '#EC4899',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -340,6 +384,7 @@ function TOTPSetupContent() {
                                             value={digit}
                                             onChange={(e) => handleOtpChange(index, e.target.value)}
                                             onKeyDown={(e) => handleKeyDown(index, e)}
+                                            disabled={index > 0 && otp.slice(0, index).some(d => d === '')}
                                             inputProps={{
                                                 maxLength: 1,
                                                 style: {

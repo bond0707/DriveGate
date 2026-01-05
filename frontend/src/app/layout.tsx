@@ -6,8 +6,8 @@ import theme from "../theme";
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: "My Monorepo App",
-  description: "Next.js 16 Frontend",
+  title: "DriveGate",
+  description: "The one-way entrance to your private cloud.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

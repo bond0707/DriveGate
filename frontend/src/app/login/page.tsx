@@ -1,12 +1,10 @@
 'use client';
 import { Box, Button, Typography, Paper } from '@mui/material';
-import { Google } from '@mui/icons-material';
+import { CloudUploadRounded, Google, HistoryEduRounded, SecurityRounded } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import SecurityIcon from '@mui/icons-material/Security';
-import SpeedIcon from '@mui/icons-material/Speed';
 import ThemeToggle from '@/components/ThemeToggle';
+import Image from 'next/image';
 
 const MotionBox = motion.create(Box);
 const MotionPaper = motion.create(Paper);
@@ -88,9 +86,9 @@ export default function LoginPage() {
               mb: 4,
               justifyContent: 'center'
             }}>
-              <CloudUploadIcon sx={{ fontSize: 60 }} />
+              <Image src="/logo-light.svg" alt="DriveGate" width={60} height={60} />
               <Typography variant="h3" fontWeight="700">
-                TOTP Drive
+                DriveGate
               </Typography>
             </Box>
           </motion.div>
@@ -101,7 +99,7 @@ export default function LoginPage() {
             transition={{ delay: 0.5 }}
           >
             <Typography variant="h5" sx={{ mb: 3, textAlign: 'center' }}>
-              Secure File Uploads with Two-Factor Authentication
+              The one-way entrance to your private cloud.
             </Typography>
           </motion.div>
 
@@ -112,9 +110,9 @@ export default function LoginPage() {
           >
             <Box sx={{ mt: 6 }}>
               {[
-                { icon: <SecurityIcon />, text: 'Enterprise-grade security with TOTP' },
-                { icon: <CloudUploadIcon />, text: 'Custom upload links for easy sharing' },
-                { icon: <SpeedIcon />, text: 'Fast and reliable uploads' }
+                { icon: <SecurityRounded />, text: 'Zero-Login Guest Uploads' },
+                { icon: <CloudUploadRounded />, text: 'Permanent Custom URLs' },
+                { icon: <HistoryEduRounded />, text: 'Secure Write-Only Access' }
               ].map((feature, index) => (
                 <Box
                   key={index}
@@ -156,7 +154,7 @@ export default function LoginPage() {
           transition={{ delay: 0.4, duration: 0.5 }}
           elevation={0}
           sx={{
-            p: 6,
+            p: 5,
             maxWidth: 450,
             width: '100%',
             bgcolor: 'background.paper',
@@ -172,17 +170,17 @@ export default function LoginPage() {
             gap: 2,
             alignItems: 'center'
           }}>
-            <CloudUploadIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+            <Image src="/logo-light.svg" alt="DriveGate" width={40} height={40} />
             <Typography variant="h4" fontWeight="700" color="primary">
-              TOTP Drive
+              DriveGate
             </Typography>
           </Box>
 
-          <Typography variant="h4" fontWeight="700" gutterBottom>
+          <Typography variant="h4" fontWeight="700" gutterBottom sx={{ pl: 1 }}>
             Welcome
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-            Sign in to create your secure upload portal
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 4, pl: 1 }}>
+            Sign in to manage your cloud upload links
           </Typography>
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -197,23 +195,14 @@ export default function LoginPage() {
               Sign in with Google
             </Button>
           </motion.div>
-
           <Typography
-            variant="caption"
+            variant="body2"
             color="text.secondary"
-            sx={{ display: 'block', textAlign: 'center', mt: 3 }}
+            sx={{ mt: 4, textAlign: 'center' }}
           >
-            By signing in, you agree to our Terms of Service
+            New here? Your account will be created automatically.
           </Typography>
         </MotionPaper>
-
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ mt: 4, textAlign: 'center' }}
-        >
-          New here? Your account will be created automatically
-        </Typography>
       </Box>
     </Box>
   );

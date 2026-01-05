@@ -1,6 +1,6 @@
 'use client';
 import { IconButton, Tooltip } from '@mui/material';
-import { DarkMode, LightMode } from '@mui/icons-material';
+import { DarkMode, WbSunny } from '@mui/icons-material';
 import { useColorScheme } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
 import React from 'react';
@@ -42,7 +42,7 @@ export default function ThemeToggle() {
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                         {isDark ? (
-                            <LightMode sx={{ color: 'secondary.main' }} />
+                            <WbSunny sx={{ color: '#FFA726' }} />
                         ) : (
                             <DarkMode sx={{ color: 'primary.main' }} />
                         )}
