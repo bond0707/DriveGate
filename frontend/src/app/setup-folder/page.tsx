@@ -123,7 +123,7 @@ export default function SetupFolderPage() {
                     <MotionBox
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                        transition={{ delay: 0.2, duration: 0.4, ease: 'easeOut' }}
                     >
                         <Box sx={{
                             width: { xs: 60, sm: 80 },

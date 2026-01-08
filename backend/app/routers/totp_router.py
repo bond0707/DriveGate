@@ -19,6 +19,7 @@ async def return_totp_secret_and_uri(user: UserModel = Depends(get_current_user)
     try:
         totp_secret = totp_service.generate_totp_secret()
         uri = totp_service.get_provisioning_uri(user.email, totp_secret)
+        print(uri)
         return {
             "totp_secret": totp_secret,
             "provisioning_uri": uri

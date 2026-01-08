@@ -83,7 +83,7 @@ export default function LoginPage() {
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+            transition={{ delay: 0.3, duration: 0.4, ease: 'easeOut' }}
           >
             <Box sx={{
               display: 'flex',
