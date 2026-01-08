@@ -8,6 +8,10 @@ import {
     Button,
     LinearProgress,
     useTheme,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from '@mui/material';
 import {
     CloudUpload,
@@ -16,7 +20,11 @@ import {
     InsertDriveFile,
     ExpandMore,
     ExpandLess,
+<<<<<<< HEAD
     ErrorOutline,
+=======
+    Warning,
+>>>>>>> 88b72a337aae47ff259cf284b059061b51848497
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useCallback, use, useEffect } from 'react';
@@ -44,13 +52,18 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
     const [files, setFiles] = useState<FileUpload[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [showAllFiles, setShowAllFiles] = useState(false);
+<<<<<<< HEAD
     const [countdown, setCountdown] = useState(5);
     const [uploadToken, setUploadToken] = useState<string | null>(null);
+=======
+>>>>>>> 88b72a337aae47ff259cf284b059061b51848497
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [backWarningOpen, setBackWarningOpen] = useState(false);
 
     const loaderColor = muiTheme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
 
+<<<<<<< HEAD
     // Initial slug verification removed as backend has no GET /{slug} endpoint.
     // Validation happens during TOTP verification.
     useEffect(() => {
@@ -75,6 +88,54 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
                 });
             }, 1000);
             return () => clearInterval(timer);
+=======
+    // Handle back button warning during upload step
+    useEffect(() => {
+        if (step === 'upload') {
+            // Push a dummy state to intercept back
+            window.history.pushState({ uploadPage: true }, '');
+
+            const handlePopState = (e: PopStateEvent) => {
+                e.preventDefault();
+                setBackWarningOpen(true);
+                // Re-push state to stay on page
+                window.history.pushState({ uploadPage: true }, '');
+            };
+
+            window.addEventListener('popstate', handlePopState);
+            return () => window.removeEventListener('popstate', handlePopState);
+        }
+    }, [step]);
+
+    const handleConfirmLeave = () => {
+        setBackWarningOpen(false);
+        // Go back to start
+        setStep('totp');
+        setOtp(['', '', '', '', '', '']);
+        setFiles([]);
+        setShowAllFiles(false);
+    };
+
+    // Silent auto-refresh after 5 seconds
+    useEffect(() => {
+        if (step === 'success') {
+            const timer = setTimeout(() => {
+                setStep('totp');
+                setOtp(['', '', '', '', '', '']);
+                setFiles([]);
+                setShowAllFiles(false);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [step]);
+
+    // Auto-focus first box when on totp step
+    useEffect(() => {
+        if (step === 'totp') {
+            setTimeout(() => {
+                inputRefs.current[0]?.focus();
+            }, 100);
+>>>>>>> 88b72a337aae47ff259cf284b059061b51848497
         }
     }, [step]);
 
@@ -82,13 +143,22 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
         if (value.length > 1) value = value.slice(-1);
         if (!/^\d*$/.test(value)) return;
 
+        // Only allow input if all previous boxes are filled
+        if (value && index > 0) {
+            const allPreviousFilled = otp.slice(0, index).every(d => d !== '');
+            if (!allPreviousFilled) return;
+        }
+
         const newOtp = [...otp];
         newOtp[index] = value;
         setOtp(newOtp);
         setError('');
 
+        // Delay focus to allow React to re-render and enable the next box
         if (value && index < 5) {
-            inputRefs.current[index + 1]?.focus();
+            setTimeout(() => {
+                inputRefs.current[index + 1]?.focus();
+            }, 0);
         }
 
         if (newOtp.every(d => d !== '')) {
@@ -99,6 +169,15 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
     const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
         if (e.key === 'Backspace' && !otp[index] && index > 0) {
             inputRefs.current[index - 1]?.focus();
+        }
+    };
+
+    const handleFocus = (index: number) => {
+        // Find the first empty box
+        const firstEmptyIndex = otp.findIndex(d => d === '');
+        // If clicking on a box beyond the first empty, redirect focus
+        if (firstEmptyIndex !== -1 && index > firstEmptyIndex) {
+            inputRefs.current[firstEmptyIndex]?.focus();
         }
     };
 
@@ -339,7 +418,7 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
                                     width: { xs: 60, sm: 80 },
                                     height: { xs: 60, sm: 80 },
                                     borderRadius: '50%',
-                                    bgcolor: 'primary.main',
+                                    bgcolor: '#0D9488',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -373,7 +452,7 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
                                             value={digit}
                                             onChange={(e) => handleOtpChange(index, e.target.value)}
                                             onKeyDown={(e) => handleKeyDown(index, e)}
-                                            disabled={isVerifying}
+                                            disabled={isVerifying || (index > 0 && otp.slice(0, index).some(d => d === ''))}
                                             inputProps={{
                                                 maxLength: 1,
                                                 style: { textAlign: 'center', fontSize: '1.25rem', fontWeight: 600 },
@@ -550,19 +629,67 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
                             <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main', mb: 1 }}>
                                 Upload Complete!
                             </Typography>
+<<<<<<< HEAD
                             <Typography color="text.secondary" sx={{ mb: 2 }}>
                                 {files.filter(f => f.status === 'done').length} file{files.filter(f => f.status === 'done').length !== 1 ? 's' : ''} uploaded.
+=======
+                            <Typography color="text.secondary">
+                                {files.length} file{files.length !== 1 ? 's' : ''} uploaded successfully.
+>>>>>>> 88b72a337aae47ff259cf284b059061b51848497
                             </Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                                <SquircleLoader size={24} color={loaderColor} />
-                                <Typography variant="body2" color="text.secondary">
-                                    Refreshing in {countdown}s...
-                                </Typography>
-                            </Box>
                         </MotionPaper>
                     )}
                 </AnimatePresence>
             </Container>
+
+            {/* Back Warning Dialog */}
+            <Dialog
+                open={backWarningOpen}
+                onClose={() => setBackWarningOpen(false)}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            borderRadius: 3,
+                            maxWidth: 400,
+                        }
+                    }
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 2 }}>
+                    <Box sx={{
+                        p: 1,
+                        borderRadius: 2,
+                        bgcolor: '#FFF3E0',
+                        color: '#E65100',
+                        display: 'flex'
+                    }}>
+                        <Warning />
+                    </Box>
+                    Leaving this page?
+                </DialogTitle>
+                <DialogContent sx={{ pb: 3 }}>
+                    <Typography color="text.secondary">
+                        You&apos;ll need to re-enter your TOTP code and any selected files and upload progress will be lost.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5, pt: 0, gap: 1.5 }}>
+                    <Button
+                        variant="outlined"
+                        onClick={() => setBackWarningOpen(false)}
+                        sx={{ borderRadius: 2, flex: 1 }}
+                    >
+                        Stay
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        onClick={handleConfirmLeave}
+                        sx={{ borderRadius: 2, flex: 1 }}
+                    >
+                        Leave
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

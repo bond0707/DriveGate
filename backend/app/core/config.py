@@ -16,7 +16,6 @@ class Settings(BaseSettings):
 
     APP_NAME: str
     APP_VERSION: str
-    CORS_ORIGINS: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(
         env_file = ".env",

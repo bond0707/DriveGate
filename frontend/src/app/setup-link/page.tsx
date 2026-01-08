@@ -82,6 +82,15 @@ export default function SetupLinkPage() {
         return () => clearTimeout(timer);
     }, [slug, user]);
 
+    // Handle browser back button
+    useEffect(() => {
+        const handlePopState = () => {
+            localStorage.removeItem('link_mode');
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
     const handleClose = () => {
         router.push('/dashboard');
     };
@@ -248,7 +257,7 @@ export default function SetupLinkPage() {
                         color="text.secondary"
                         sx={{ display: 'block', mt: 2, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                     >
-                        Visitors need your TOTP code to upload
+                        You will need your TOTP code to upload
                     </Typography>
                 </MotionPaper>
             </Container>
