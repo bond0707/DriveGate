@@ -99,7 +99,9 @@ async def get_upload_uri(
         "Authorization": f"Bearer {google_access_token}",
         "Content-Type": "application/json",
         "X-Upload-Content-Type": file_metadata.mime_type,
-        "X-Upload-Content-Length": str(file_metadata.file_size)
+        "X-Upload-Content-Length": str(file_metadata.file_size),
+        # CRITICAL: Origin header required for Google to allow CORS on the PUT request from browser
+        "Origin": "http://localhost:3000" 
     }
 
     body = {
