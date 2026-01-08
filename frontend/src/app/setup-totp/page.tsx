@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -11,13 +11,12 @@ import {
     Button,
     TextField,
     CircularProgress,
-    Alert,
     Snackbar,
     IconButton,
     Tooltip,
 } from '@mui/material';
 import { ContentCopy, ArrowBack } from '@mui/icons-material';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
@@ -25,16 +24,18 @@ const MotionPaper = motion.create(Paper);
 
 export default function TotpSetupPage() {
     const router = useRouter();
-    const { user, checkAuth } = useAuth(); // Import checkAuth
+    const { user, checkAuth } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [isVerifying, setIsVerifying] = useState(false);
     const [secret, setSecret] = useState('');
     const [provisioningUri, setProvisioningUri] = useState('');
-    const [code, setCode] = useState('');
+    const [otp, setOtp] = useState(['', '', '', '', '', '']); // Changed to array
     const [error, setError] = useState('');
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [showSuccess, setShowSuccess] = useState(false);
+
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     useEffect(() => {
         const fetchSetup = async () => {
@@ -59,12 +60,56 @@ export default function TotpSetupPage() {
         setSnackbarOpen(true);
     };
 
-    const handleVerify = async () => {
-        if (!code || code.length !== 6) {
-            setError('Please enter a valid 6-digit code');
-            return;
+    const handleOtpChange = (index: number, value: string) => {
+        if (value.length > 1) value = value.slice(-1); // Take last char if multiple
+        if (!/^\d*$/.test(value)) return;
+
+        const newOtp = [...otp];
+        newOtp[index] = value;
+        setOtp(newOtp);
+        setError('');
+
+        if (value && index < 5) {
+            inputRefs.current[index + 1]?.focus();
         }
 
+        // Auto verify if full
+        if (newOtp.every(d => d !== '') && index === 5 && value) {
+            verifyTotp(newOtp.join(''));
+        }
+    };
+
+    const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+        if (e.key === 'Backspace' && !otp[index] && index > 0) {
+            inputRefs.current[index - 1]?.focus();
+        }
+    };
+
+    const handlePaste = (e: React.ClipboardEvent) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').slice(0, 6);
+        if (!/^\d+$/.test(pastedData)) return;
+
+        const newOtp = [...otp];
+        pastedData.split('').forEach((char, i) => {
+            if (i < 6) newOtp[i] = char;
+        });
+        setOtp(newOtp);
+
+        if (newOtp.every(d => d !== '')) {
+            verifyTotp(newOtp.join(''));
+        } else {
+            // Focus the next empty box
+            const nextEmpty = newOtp.findIndex(d => d === '');
+            if (nextEmpty !== -1) {
+                inputRefs.current[nextEmpty]?.focus();
+            } else {
+                inputRefs.current[5]?.focus();
+            }
+        }
+    };
+
+    const verifyTotp = async (code: string) => {
         setIsVerifying(true);
         setError('');
 
@@ -74,22 +119,28 @@ export default function TotpSetupPage() {
                 user_totp_secret: secret,
             });
 
-            await checkAuth(); // Refresh user state to update UI
+            await checkAuth();
             setShowSuccess(true);
             setSuccessMessage('2FA Setup Successful!');
             setSnackbarOpen(true);
 
-            // Redirect after a short delay
             setTimeout(() => {
                 router.push('/dashboard');
             }, 1500);
 
-        } catch (err: any) {
+        } catch (error) {
+            const err = error as any;
             console.error('Verification failed:', err);
             setError(err.response?.data?.detail || 'Verification failed. Please check the code and try again.');
+            // Clear inputs on error so user can retry easily? Or keep them? 
+            // Better to keep them so they can edit one digit if they made a mistake
         } finally {
             setIsVerifying(false);
         }
+    };
+
+    const handleVerify = () => {
+        verifyTotp(otp.join(''));
     };
 
     if (isLoading) {
@@ -110,13 +161,13 @@ export default function TotpSetupPage() {
                 <MotionPaper
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    sx={{ p: 4, borderRadius: 2 }}
+                    sx={{ p: 4, borderRadius: 2, textAlign: 'center' }}
                 >
                     <Typography variant="h4" fontWeight="bold" gutterBottom>
                         Setup 2FA
                     </Typography>
                     <Typography color="text.secondary" paragraph>
-                        Scan the QR code below with your authenticator app (Google Authenticator, Authy, etc.)
+                        Scan the QR code below with your authenticator app
                     </Typography>
 
                     <Box sx={{ display: 'flex', justifyContent: 'center', my: 4, p: 2, bgcolor: 'white', borderRadius: 2, width: 'fit-content', mx: 'auto' }}>
@@ -126,9 +177,6 @@ export default function TotpSetupPage() {
                     </Box>
 
                     <Box sx={{ mb: 4 }}>
-                        <Typography variant="subtitle2" gutterBottom>
-                            Or enter the code manually:
-                        </Typography>
                         <Box sx={{
                             display: 'flex',
                             alignItems: 'center',
@@ -136,9 +184,11 @@ export default function TotpSetupPage() {
                             bgcolor: 'action.hover',
                             p: 2,
                             borderRadius: 1,
-                            fontFamily: 'monospace'
+                            justifyContent: 'center',
+                            width: 'fit-content',
+                            mx: 'auto'
                         }}>
-                            <Typography sx={{ flex: 1, wordBreak: 'break-all', fontWeight: 'bold' }}>
+                            <Typography sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
                                 {secret}
                             </Typography>
                             <Tooltip title="Copy Secret">
@@ -149,30 +199,59 @@ export default function TotpSetupPage() {
                         </Box>
                     </Box>
 
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <TextField
-                            label="Enter 6-digit code"
-                            value={code}
-                            onChange={(e) => {
-                                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                                setCode(val);
-                                setError('');
-                            }}
-                            error={!!error}
-                            helperText={error}
-                            fullWidth
-                            autoComplete="off"
-                            slotProps={{ htmlInput: { maxLength: 6, style: { fontSize: '1.5rem', letterSpacing: '0.5rem', textAlign: 'center' } } }}
-                        />
+                    <Typography variant="subtitle2" gutterBottom align="left" sx={{ width: '100%', mb: 1 }}>
+                        Enter 6-digit code:
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <Box
+                            sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}
+                            onPaste={handlePaste}
+                        >
+                            {otp.map((digit, index) => (
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.05 * index }}
+                                >
+                                    <TextField
+                                        inputRef={(el) => (inputRefs.current[index] = el)}
+                                        value={digit}
+                                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                                        onKeyDown={(e) => handleKeyDown(index, e)}
+                                        disabled={isVerifying}
+                                        error={!!error}
+                                        inputProps={{
+                                            maxLength: 1,
+                                            style: { textAlign: 'center', fontSize: '1.5rem', fontWeight: 600, padding: '12px' },
+                                        }}
+                                        sx={{ width: { xs: 45, sm: 55 } }}
+                                    />
+                                </motion.div>
+                            ))}
+                        </Box>
+
+                        <AnimatePresence>
+                            {error && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                >
+                                    <Typography color="error" variant="body2">{error}</Typography>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         <Button
                             variant="contained"
                             size="large"
                             fullWidth
                             onClick={handleVerify}
-                            disabled={code.length !== 6 || isVerifying}
+                            disabled={otp.some(d => d === '') || isVerifying}
                         >
-                            {isVerifying ? <CircularProgress size={24} /> : 'Verify & Enable'}
+                            {isVerifying ? <CircularProgress size={24} color="inherit" /> : 'Verify & Enable'}
                         </Button>
                     </Box>
                 </MotionPaper>
