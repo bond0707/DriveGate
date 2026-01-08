@@ -20,11 +20,8 @@ import {
     InsertDriveFile,
     ExpandMore,
     ExpandLess,
-<<<<<<< HEAD
-    ErrorOutline,
-=======
     Warning,
->>>>>>> 88b72a337aae47ff259cf284b059061b51848497
+    ErrorOutline,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useCallback, use, useEffect } from 'react';
@@ -52,43 +49,20 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
     const [files, setFiles] = useState<FileUpload[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [showAllFiles, setShowAllFiles] = useState(false);
-<<<<<<< HEAD
     const [countdown, setCountdown] = useState(5);
     const [uploadToken, setUploadToken] = useState<string | null>(null);
-=======
->>>>>>> 88b72a337aae47ff259cf284b059061b51848497
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [backWarningOpen, setBackWarningOpen] = useState(false);
 
     const loaderColor = muiTheme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
 
-<<<<<<< HEAD
-    // Initial slug verification removed as backend has no GET /{slug} endpoint.
-    // Validation happens during TOTP verification.
+    // Verify step on mount
     useEffect(() => {
+        // Backend doesn't support slug verification without TOTP, so we start at TOTP step
         setStep('totp');
     }, []);
 
-    useEffect(() => {
-        if (step === 'success') {
-            const timer = setInterval(() => {
-                setCountdown(prev => {
-                    if (prev <= 1) {
-                        clearInterval(timer);
-                        setStep('totp'); // Back to TOTP for security
-                        setOtp(['', '', '', '', '', '']);
-                        setFiles([]);
-                        setShowAllFiles(false);
-                        setCountdown(5);
-                        setUploadToken(null);
-                        return 5;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-            return () => clearInterval(timer);
-=======
     // Handle back button warning during upload step
     useEffect(() => {
         if (step === 'upload') {
@@ -107,25 +81,20 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
         }
     }, [step]);
 
-    const handleConfirmLeave = () => {
-        setBackWarningOpen(false);
-        // Go back to start
-        setStep('totp');
-        setOtp(['', '', '', '', '', '']);
-        setFiles([]);
-        setShowAllFiles(false);
-    };
-
-    // Silent auto-refresh after 5 seconds
+    // Success auto-refresh timer
     useEffect(() => {
         if (step === 'success') {
-            const timer = setTimeout(() => {
-                setStep('totp');
-                setOtp(['', '', '', '', '', '']);
-                setFiles([]);
-                setShowAllFiles(false);
-            }, 5000);
-            return () => clearTimeout(timer);
+            const timer = setInterval(() => {
+                setCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        handleReset();
+                        return 5;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            return () => clearInterval(timer);
         }
     }, [step]);
 
@@ -135,9 +104,23 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
             setTimeout(() => {
                 inputRefs.current[0]?.focus();
             }, 100);
->>>>>>> 88b72a337aae47ff259cf284b059061b51848497
         }
     }, [step]);
+
+    const handleReset = () => {
+        setStep('totp');
+        setOtp(['', '', '', '', '', '']);
+        setFiles([]);
+        setShowAllFiles(false);
+        setCountdown(5);
+        setUploadToken(null);
+        setError('');
+    };
+
+    const handleConfirmLeave = () => {
+        setBackWarningOpen(false);
+        handleReset();
+    };
 
     const handleOtpChange = (index: number, value: string) => {
         if (value.length > 1) value = value.slice(-1);
@@ -154,11 +137,8 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
         setOtp(newOtp);
         setError('');
 
-        // Delay focus to allow React to re-render and enable the next box
         if (value && index < 5) {
-            setTimeout(() => {
-                inputRefs.current[index + 1]?.focus();
-            }, 0);
+            inputRefs.current[index + 1]?.focus();
         }
 
         if (newOtp.every(d => d !== '')) {
@@ -169,15 +149,6 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
     const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
         if (e.key === 'Backspace' && !otp[index] && index > 0) {
             inputRefs.current[index - 1]?.focus();
-        }
-    };
-
-    const handleFocus = (index: number) => {
-        // Find the first empty box
-        const firstEmptyIndex = otp.findIndex(d => d === '');
-        // If clicking on a box beyond the first empty, redirect focus
-        if (firstEmptyIndex !== -1 && index > firstEmptyIndex) {
-            inputRefs.current[firstEmptyIndex]?.focus();
         }
     };
 
@@ -277,36 +248,37 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
                     }
                 );
 
-                // 2. Upload to Google Drive (PUT)
-                // Note: Google Drive Resumable Uploads require PUT to the signed URL.
-                // CORS should be handled by Google.
-                // We must send the exact file content.
                 console.log('Uploading to:', data.upload_url);
 
-                try {
-                    await axios.put(data.upload_url, file, {
-                        headers: {
-                            'Content-Type': file.type || 'application/octet-stream'
-                        },
-                        onUploadProgress: (progressEvent) => {
-                            const percentCompleted = Math.round(
-                                (progressEvent.loaded * 100) / (progressEvent.total || file.size)
-                            );
-                            setFiles(prev => prev.map((f, idx) =>
-                                idx === i ? { ...f, progress: percentCompleted } : f
-                            ));
+                // 2. Upload to Google Drive (PUT)
+                // Implement simple retry logic
+                const uploadFile = async (retryCount = 0) => {
+                    try {
+                        await axios.put(data.upload_url, file, {
+                            headers: {
+                                'Content-Type': file.type || 'application/octet-stream'
+                            },
+                            onUploadProgress: (progressEvent) => {
+                                const percentCompleted = Math.round(
+                                    (progressEvent.loaded * 100) / (progressEvent.total || file.size)
+                                );
+                                setFiles(prev => prev.map((f, idx) =>
+                                    idx === i ? { ...f, progress: percentCompleted } : f
+                                ));
+                            }
+                        });
+                    } catch (err) {
+                        if (retryCount < 1) {
+                            console.warn('Upload failed, retrying once...', err);
+                            await new Promise(r => setTimeout(r, 1000));
+                            await uploadFile(retryCount + 1);
+                        } else {
+                            throw err;
                         }
-                    });
-                } catch (putError: any) {
-                    // Start Retry Logic (One retry)
-                    console.warn('Upload failed, retrying once...', putError);
-                    await new Promise(r => setTimeout(r, 1000));
-                    await axios.put(data.upload_url, file, {
-                        headers: {
-                            'Content-Type': file.type || 'application/octet-stream'
-                        }
-                    });
-                }
+                    }
+                };
+
+                await uploadFile();
 
                 setFiles(prev => prev.map((f, idx) =>
                     idx === i ? { ...f, status: 'done' as const } : f
@@ -629,13 +601,11 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
                             <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main', mb: 1 }}>
                                 Upload Complete!
                             </Typography>
-<<<<<<< HEAD
                             <Typography color="text.secondary" sx={{ mb: 2 }}>
                                 {files.filter(f => f.status === 'done').length} file{files.filter(f => f.status === 'done').length !== 1 ? 's' : ''} uploaded.
-=======
-                            <Typography color="text.secondary">
-                                {files.length} file{files.length !== 1 ? 's' : ''} uploaded successfully.
->>>>>>> 88b72a337aae47ff259cf284b059061b51848497
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                Resetting in {countdown}s...
                             </Typography>
                         </MotionPaper>
                     )}
@@ -646,13 +616,8 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
             <Dialog
                 open={backWarningOpen}
                 onClose={() => setBackWarningOpen(false)}
-                slotProps={{
-                    paper: {
-                        sx: {
-                            borderRadius: 3,
-                            maxWidth: 400,
-                        }
-                    }
+                PaperProps={{
+                    sx: { borderRadius: 3, maxWidth: 400 }
                 }}
             >
                 <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 2 }}>
