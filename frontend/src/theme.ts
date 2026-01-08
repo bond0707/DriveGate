@@ -1,12 +1,12 @@
 'use client';
 import { createTheme } from '@mui/material/styles';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+// import { Plus_Jakarta_Sans } from 'next/font/google';
 
-const plusJakarta = Plus_Jakarta_Sans({
-  weight: ['300', '400', '500', '600', '700', '800'],
-  subsets: ['latin'],
-  display: 'swap',
-});
+// const plusJakarta = Plus_Jakarta_Sans({
+//   weight: ['300', '400', '500', '600', '700', '800'],
+//   subsets: ['latin'],
+//   display: 'swap',
+// });
 
 // Original teal color scheme
 const theme = createTheme({
@@ -64,7 +64,7 @@ const theme = createTheme({
     },
   },
   typography: {
-    fontFamily: plusJakarta.style.fontFamily,
+    fontFamily: '"Plus Jakarta Sans", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontWeight: 700,
       letterSpacing: '-0.03em',

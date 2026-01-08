@@ -9,17 +9,22 @@ import {
     InputAdornment,
     IconButton,
     useTheme,
+    CircularProgress,
 } from '@mui/material';
 import {
     Link as LinkIcon,
     ArrowForward,
     Close,
+    CheckCircle,
+    Cancel,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import SquircleLoader from '@/components/SquircleLoader';
+import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 const MotionPaper = motion.create(Paper);
 const MotionBox = motion.create(Box);
@@ -27,28 +32,57 @@ const MotionBox = motion.create(Box);
 export default function SetupLinkPage() {
     const router = useRouter();
     const muiTheme = useTheme();
+    const { user, checkAuth } = useAuth();
     const [slug, setSlug] = useState('');
     const [error, setError] = useState('');
     const [isCreating, setIsCreating] = useState(false);
     const [isUpdate, setIsUpdate] = useState(false);
 
+    const [isChecking, setIsChecking] = useState(false);
+    const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+
     const loaderColor = muiTheme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
 
     useEffect(() => {
-        const mode = localStorage.getItem('link_mode');
-        const isUpdateMode = mode === 'update';
-        setIsUpdate(isUpdateMode);
-
-        if (isUpdateMode) {
-            const existingLink = localStorage.getItem('upload_link');
-            if (existingLink) {
-                setSlug(existingLink);
-            }
+        // user might be null initially if loading, but assuming protected route or handled by layout
+        if (user?.url_slug) {
+            setSlug(user.url_slug);
+            setIsUpdate(true);
         }
-    }, []);
+    }, [user]);
+
+    // Live Check with Debounce
+    useEffect(() => {
+        const checkAvailability = async () => {
+            if (!slug || slug.length < 3 || slug === user?.url_slug) {
+                setIsAvailable(null);
+                return;
+            }
+
+            setIsChecking(true);
+            try {
+                const response = await api.get(`/url/check-availability?slug=${slug}`);
+                setIsAvailable(response.data.available);
+                if (!response.data.available) {
+                    setError('This link is already taken');
+                } else {
+                    setError('');
+                }
+            } catch (err) {
+                console.error('Failed to check availability', err);
+            } finally {
+                setIsChecking(false);
+            }
+        };
+
+        const timer = setTimeout(() => {
+            checkAvailability();
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [slug, user]);
 
     const handleClose = () => {
-        localStorage.removeItem('link_mode');
         router.push('/dashboard');
     };
 
@@ -56,6 +90,7 @@ export default function SetupLinkPage() {
         const value = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
         setSlug(value);
         setError('');
+        setIsAvailable(null); // Reset status while typing
     };
 
     const handleCreate = async () => {
@@ -63,20 +98,34 @@ export default function SetupLinkPage() {
             setError('Link must be at least 3 characters');
             return;
         }
-        if (slug.length > 20) {
-            setError('Link must be 20 characters or less');
+        if (isAvailable === false) {
+            setError('This link is already taken');
             return;
         }
 
         setIsCreating(true);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        setError('');
 
-        localStorage.setItem('upload_link', slug);
-        localStorage.removeItem('link_mode');
-        router.push('/dashboard');
+        try {
+            await api.patch('/url/update', { url_slug: slug });
+            await checkAuth(); // Refresh user data to update context
+            router.push('/dashboard');
+        } catch (err: any) {
+            console.error('Failed to update slug:', err);
+            // Handle 409 Conflict cleanly
+            if (err.response?.status === 409) {
+                setError('This link is already taken.');
+                setIsAvailable(false);
+            } else {
+                setError(err.response?.data?.detail || 'Failed to update link.');
+            }
+        } finally {
+            setIsCreating(false);
+        }
     };
 
     const previewUrl = `yoursite.com/${slug || 'your-link'}`;
+    const showSuccess = isAvailable === true && !isChecking && slug.length >= 3;
 
     return (
         <Box sx={{
@@ -157,13 +206,25 @@ export default function SetupLinkPage() {
                         onChange={handleSlugChange}
                         placeholder="my-upload-link"
                         error={!!error}
-                        helperText={error || 'Lowercase letters, numbers, hyphens only'}
+                        color={showSuccess ? 'success' : 'primary'}
+                        focused={showSuccess ? true : undefined}
+                        helperText={
+                            error ||
+                            (showSuccess ? <span style={{ color: muiTheme.palette.success.main, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckCircle fontSize="small" sx={{ mr: 0.5 }} /> Available</span> : 'Lowercase letters, numbers, hyphens only')
+                        }
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
                                     <Typography color="text.secondary">/</Typography>
                                 </InputAdornment>
                             ),
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    {isChecking && <CircularProgress size={20} />}
+                                    {!isChecking && isAvailable === false && <Cancel color="error" />}
+                                    {!isChecking && showSuccess && <CheckCircle color="success" />}
+                                </InputAdornment>
+                            )
                         }}
                         sx={{ mb: 3 }}
                     />
@@ -174,7 +235,7 @@ export default function SetupLinkPage() {
                             size="large"
                             fullWidth
                             onClick={handleCreate}
-                            disabled={!slug || isCreating}
+                            disabled={!slug || isCreating || isAvailable === false}
                             endIcon={isCreating ? <SquircleLoader size={20} color="white" /> : <ArrowForward />}
                             sx={{ py: 1.5 }}
                         >

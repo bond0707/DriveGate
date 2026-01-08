@@ -16,11 +16,14 @@ import {
     InsertDriveFile,
     ExpandMore,
     ExpandLess,
+    ErrorOutline,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useCallback, use, useEffect } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import SquircleLoader from '@/components/SquircleLoader';
+import { api } from '@/lib/api';
+import axios from 'axios';
 
 const MotionPaper = motion.create(Paper);
 const MotionBox = motion.create(Box);
@@ -34,19 +37,25 @@ interface FileUpload {
 export default function PublicUploadPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
     const muiTheme = useTheme();
-    const [step, setStep] = useState<'totp' | 'upload' | 'success'>('totp');
+    const [step, setStep] = useState<'loading' | 'error' | 'totp' | 'upload' | 'success'>('loading');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [isVerifying, setIsVerifying] = useState(false);
     const [error, setError] = useState('');
     const [files, setFiles] = useState<FileUpload[]>([]);
     const [isDragging, setIsDragging] = useState(false);
-    const [userName] = useState('User');
     const [showAllFiles, setShowAllFiles] = useState(false);
     const [countdown, setCountdown] = useState(5);
+    const [uploadToken, setUploadToken] = useState<string | null>(null);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const loaderColor = muiTheme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
+
+    // Initial slug verification removed as backend has no GET /{slug} endpoint.
+    // Validation happens during TOTP verification.
+    useEffect(() => {
+        setStep('totp');
+    }, []);
 
     useEffect(() => {
         if (step === 'success') {
@@ -54,11 +63,12 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
                 setCountdown(prev => {
                     if (prev <= 1) {
                         clearInterval(timer);
-                        setStep('totp');
+                        setStep('totp'); // Back to TOTP for security
                         setOtp(['', '', '', '', '', '']);
                         setFiles([]);
                         setShowAllFiles(false);
                         setCountdown(5);
+                        setUploadToken(null);
                         return 5;
                     }
                     return prev - 1;
@@ -110,16 +120,24 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
 
     const verifyTotp = async (code: string) => {
         setIsVerifying(true);
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        setError('');
 
-        if (code.length === 6) {
+        try {
+            const response = await api.post('/totp/verify', {
+                totp: code,
+                url_slug: slug
+            });
+
+            setUploadToken(response.data.upload_token);
             setStep('upload');
-        } else {
-            setError('Invalid code. Please try again.');
+        } catch (err: any) {
+            console.error('Verification failed:', err);
+            setError(err.response?.data?.detail || 'Invalid code. Please try again.');
             setOtp(['', '', '', '', '', '']);
             inputRefs.current[0]?.focus();
+        } finally {
+            setIsVerifying(false);
         }
-        setIsVerifying(false);
     };
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -161,16 +179,66 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
                 idx === i ? { ...f, status: 'uploading' as const } : f
             ));
 
-            for (let progress = 0; progress <= 100; progress += 10) {
-                await new Promise(resolve => setTimeout(resolve, 100));
+            try {
+                const file = files[i].file;
+
+                // 1. Get signed upload URL
+                const { data } = await axios.post(
+                    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/url/get-upload-link`,
+                    {
+                        file_name: file.name,
+                        file_size: file.size,
+                        mime_type: file.type || 'application/octet-stream',
+                        md5_checksum: 'skip' // Backend currently ignores this but requires field
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${uploadToken}`
+                        }
+                    }
+                );
+
+                // 2. Upload to Google Drive (PUT)
+                // Note: Google Drive Resumable Uploads require PUT to the signed URL.
+                // CORS should be handled by Google.
+                // We must send the exact file content.
+                console.log('Uploading to:', data.upload_url);
+
+                try {
+                    await axios.put(data.upload_url, file, {
+                        headers: {
+                            'Content-Type': file.type || 'application/octet-stream'
+                        },
+                        onUploadProgress: (progressEvent) => {
+                            const percentCompleted = Math.round(
+                                (progressEvent.loaded * 100) / (progressEvent.total || file.size)
+                            );
+                            setFiles(prev => prev.map((f, idx) =>
+                                idx === i ? { ...f, progress: percentCompleted } : f
+                            ));
+                        }
+                    });
+                } catch (putError: any) {
+                    // Start Retry Logic (One retry)
+                    console.warn('Upload failed, retrying once...', putError);
+                    await new Promise(r => setTimeout(r, 1000));
+                    await axios.put(data.upload_url, file, {
+                        headers: {
+                            'Content-Type': file.type || 'application/octet-stream'
+                        }
+                    });
+                }
+
                 setFiles(prev => prev.map((f, idx) =>
-                    idx === i ? { ...f, progress } : f
+                    idx === i ? { ...f, status: 'done' as const } : f
+                ));
+
+            } catch (err) {
+                console.error('Upload failed:', err);
+                setFiles(prev => prev.map((f, idx) =>
+                    idx === i ? { ...f, status: 'error' as const } : f
                 ));
             }
-
-            setFiles(prev => prev.map((f, idx) =>
-                idx === i ? { ...f, status: 'done' as const } : f
-            ));
         }
         setStep('success');
     };
@@ -178,6 +246,30 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
     const hasFiles = files.length > 0;
     const visibleFiles = showAllFiles ? files : files.slice(0, 3);
     const hiddenCount = files.length - 3;
+
+    if (step === 'loading') {
+        return (
+            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
+                <SquircleLoader size={50} color={loaderColor} />
+            </Box>
+        );
+    }
+
+    if (step === 'error') {
+        return (
+            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
+                <Container maxWidth="sm">
+                    <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
+                        <ErrorOutline color="error" sx={{ fontSize: 60, mb: 2 }} />
+                        <Typography variant="h5" gutterBottom>Link Not Found</Typography>
+                        <Typography color="text.secondary">
+                            This upload link is invalid or has expired.
+                        </Typography>
+                    </Paper>
+                </Container>
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{
@@ -323,7 +415,7 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
                             }}
                         >
                             <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' }, mb: 1, textAlign: 'center' }}>
-                                Hello, {userName}!
+                                Upload Files
                             </Typography>
                             <Typography color="text.secondary" sx={{ mb: 3, textAlign: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                 Drop files below to upload
@@ -380,11 +472,14 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
                                             <InsertDriveFile color="primary" sx={{ fontSize: 20 }} />
                                             <Box sx={{ flex: 1, minWidth: 0 }}>
                                                 <Typography noWrap sx={{ fontSize: '0.875rem' }}>{f.file.name}</Typography>
-                                                {f.status === 'uploading' && (
+                                                {f.status === 'uploading' ? (
                                                     <LinearProgress variant="determinate" value={f.progress} sx={{ mt: 0.5 }} />
-                                                )}
+                                                ) : f.status === 'error' ? (
+                                                    <Typography variant="caption" color="error">Upload Failed</Typography>
+                                                ) : null}
                                             </Box>
                                             {f.status === 'done' && <CheckCircle color="success" sx={{ fontSize: 20 }} />}
+                                            {f.status === 'error' && <ErrorOutline color="error" sx={{ fontSize: 20 }} />}
                                         </Box>
                                     ))}
 
@@ -456,7 +551,7 @@ export default function PublicUploadPage({ params }: { params: Promise<{ slug: s
                                 Upload Complete!
                             </Typography>
                             <Typography color="text.secondary" sx={{ mb: 2 }}>
-                                {files.length} file{files.length !== 1 ? 's' : ''} uploaded.
+                                {files.filter(f => f.status === 'done').length} file{files.filter(f => f.status === 'done').length !== 1 ? 's' : ''} uploaded.
                             </Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
                                 <SquircleLoader size={24} color={loaderColor} />

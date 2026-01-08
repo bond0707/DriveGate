@@ -41,6 +41,21 @@ async def update_url_slug(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail      = str(e)
         )
+# biz
+@url_slug_router.get("/check-availability", status_code=status.HTTP_200_OK)
+async def check_slug_availability(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserModel = Depends(get_current_user)
+):
+    try:
+        exists = await user_service.check_url_slug_exists(db, slug)
+        return {"available": not exists}
+    except Exception as e:
+        raise HTTPException(
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail      = str(e)
+        )
 
 @url_slug_router.post("/get-upload-link", response_model=UploadURLResponse, status_code=status.HTTP_200_OK)
 async def get_upload_uri(

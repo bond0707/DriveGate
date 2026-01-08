@@ -45,6 +45,14 @@ async def google_callback(
                 status_code = status.HTTP_400_BAD_REQUEST,
                 detail      = 'Failed to get access token from google'
             )
+        
+        # Verify Scopes - Check if user granted Drive permissions
+        scope = tokens.get('scope', '')
+        if "https://www.googleapis.com/auth/drive.file" not in scope:
+             raise HTTPException(
+                status_code = status.HTTP_403_FORBIDDEN,
+                detail      = 'Google Drive permission is required. Please sign in again and check the Drive permissions box.'
+            )
 
         # Get user info from AccessToken
         user_info = await google_auth_service.get_user_info(access_token)

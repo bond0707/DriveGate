@@ -293,7 +293,20 @@ class UserService:
             return user_drive
         except IntegrityError as e:
             await db.rollback()
-            raise Exception(f"URL Slug needs to be unique! Error: {e}")
+            raise e
+
+    async def check_url_slug_exists(
+        self,
+        db: AsyncSession,
+        url_slug: str,
+    ) -> bool:
+        """Checks if a URL slug already exists."""
+        try:
+            query = select(UserDriveModel.id).where(UserDriveModel.url_slug == url_slug)
+            result = await db.execute(query)
+            return result.first() is not None
+        except Exception as e:
+            raise Exception(f"Failed to check slug availability: {e}")
     
     async def delete_user(db: AsyncSession, user_id: int) -> Optional[UserModel]:
         try:

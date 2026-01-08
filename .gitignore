@@ -429,3 +429,10 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Documentation files to ignore
+changelogai.md
+deploy_guide.txt
+report.md
+
+

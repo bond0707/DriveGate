@@ -4,423 +4,300 @@ import {
     Container,
     Typography,
     Paper,
-    AppBar,
-    Toolbar,
-    IconButton,
-    Avatar,
-    Menu,
-    MenuItem,
+    Grid,
     Button,
-    Snackbar,
-    Chip,
-    CircularProgress,
+    IconButton,
     Tooltip,
+    TextField,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
     useTheme,
+    CircularProgress,
+    InputAdornment,
 } from '@mui/material';
 import {
-    CloudUpload,
-    Security,
-    Logout,
-    AccountCircle,
-    Link as LinkIcon,
     ContentCopy,
-    Edit,
     Refresh,
-    QrCode2,
+    Warning,
     CheckCircle,
+    CloudUpload,
+    Settings,
+    Logout,
+    Folder,
+    Edit,
+    Save,
 } from '@mui/icons-material';
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
 import SquircleLoader from '@/components/SquircleLoader';
+import { useAuth } from '@/context/AuthContext';
+import { api } from '@/lib/api';
 
 const MotionPaper = motion.create(Paper);
+const MotionBox = motion.create(Box);
 
-function generateMockTotp(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-export default function DashboardPage() {
+export default function Dashboard() {
     const router = useRouter();
-    const theme = useTheme();
-    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [totpEnabled, setTotpEnabled] = useState(false);
-    const [uploadLink, setUploadLink] = useState<string | null>(null);
-    const [snackbarMessage, setSnackbarMessage] = useState('');
-    const [snackbarOpen, setSnackbarOpen] = useState(false);
-    const [totpCode, setTotpCode] = useState(generateMockTotp());
-    const [totpProgress, setTotpProgress] = useState(100);
-    const [userName] = useState('User');
+    const muiTheme = useTheme();
+    const { user, logout, checkAuth } = useAuth();
+    const [copiedLink, setCopiedLink] = useState(false);
+    const [openFolderDialog, setOpenFolderDialog] = useState(false);
+    const [folderName, setFolderName] = useState('');
+    const [isUpdatingFolder, setIsUpdatingFolder] = useState(false);
+    const [folderError, setFolderError] = useState('');
 
-    const loaderColor = theme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
+    const loaderColor = muiTheme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setTotpProgress(prev => {
-                if (prev <= 0) {
-                    setTotpCode(generateMockTotp());
-                    return 100;
-                }
-                return prev - (100 / 30);
-            });
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    useEffect(() => {
-        const checkStatus = async () => {
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const isTotpSetup = localStorage.getItem('totp_enabled') === 'true';
-            const link = localStorage.getItem('upload_link');
-
-            if (!isTotpSetup) {
-                router.push('/totp-setup');
-                return;
-            }
-
-            if (!link) {
-                router.push('/setup-link');
-                return;
-            }
-
-            setTotpEnabled(true);
-            setUploadLink(link);
-            setIsLoading(false);
-        };
-
-        checkStatus();
-    }, [router]);
-
-    const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
-        setAnchorEl(event.currentTarget);
-    };
-
-    const handleClose = () => {
-        setAnchorEl(null);
-    };
-
-    const handleLogout = () => {
-        handleClose();
-        router.push('/login');
-    };
+        if (user) {
+            setFolderName(user.folder_name || '');
+        }
+    }, [user]);
 
     const handleCopyLink = () => {
-        const fullUrl = `${window.location.origin}/${uploadLink}`;
-        navigator.clipboard.writeText(fullUrl);
-        setSnackbarMessage('Link copied!');
-        setSnackbarOpen(true);
+        const link = `${window.location.origin}/${user?.url_slug || ''}`;
+        navigator.clipboard.writeText(link);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
     };
 
-    const handleCopyTotp = () => {
-        navigator.clipboard.writeText(totpCode);
-        setSnackbarMessage('Code copied!');
-        setSnackbarOpen(true);
+    const handleUpdateFolder = async () => {
+        if (!folderName.trim()) {
+            setFolderError('Folder name cannot be empty');
+            return;
+        }
+
+        setIsUpdatingFolder(true);
+        setFolderError('');
+
+        try {
+            await api.post('/auth/me/update-drive-folder', {
+                folder_name: folderName,
+                drive_type: 'GOOGLE_DRIVE'
+            });
+            await checkAuth(); // Refresh user data to update context
+            setOpenFolderDialog(false);
+        } catch (err: any) {
+            console.error('Failed to update folder:', err);
+            setFolderError(err.response?.data?.detail || 'Failed to update folder');
+        } finally {
+            setIsUpdatingFolder(false);
+        }
     };
 
-    const handleResetTotp = () => {
-        localStorage.removeItem('totp_enabled');
-        localStorage.setItem('totp_mode', 'reset');
-        router.push('/totp-setup');
-    };
-
-    const handleRescanTotp = () => {
-        localStorage.setItem('totp_mode', 'rescan');
-        router.push('/totp-setup');
-    };
-
-    if (isLoading) {
+    if (!user) {
         return (
-            <Box sx={{
-                minHeight: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: 'background.default',
-                flexDirection: 'column',
-                gap: 3,
-            }}>
+            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <SquircleLoader size={50} color={loaderColor} />
-                <Typography color="text.secondary">Loading...</Typography>
             </Box>
         );
     }
 
-    return (
-        <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-            <AppBar position="static" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
-                <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-                    <CloudUpload sx={{ mr: 1.5, color: 'primary.main', fontSize: { xs: 24, sm: 28 } }} />
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700, color: 'text.primary', fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                        TOTP Drive
-                    </Typography>
-                    <ThemeToggle />
-                    <IconButton size="small" onClick={handleMenu} sx={{ ml: 1 }}>
-                        <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                            <AccountCircle />
-                        </Avatar>
-                    </IconButton>
-                    <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
-                        <MenuItem onClick={handleLogout}>
-                            <Logout sx={{ mr: 1 }} fontSize="small" />
-                            Logout
-                        </MenuItem>
-                    </Menu>
-                </Toolbar>
-            </AppBar>
+    const uploadLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/${user.url_slug || 'setup-link'}`;
 
-            <Container maxWidth="md" sx={{ mt: { xs: 3, sm: 6 }, mb: 4, px: { xs: 2, sm: 3 } }}>
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+    return (
+        <Box sx={{
+            minHeight: '100vh',
+            bgcolor: 'background.default',
+            p: { xs: 2, md: 4 },
+        }}>
+            <Box sx={{ position: 'fixed', top: 16, right: 16, zIndex: 10, display: 'flex', gap: 1 }}>
+                <ThemeToggle />
+                <Button
+                    color="inherit"
+                    startIcon={<Logout />}
+                    onClick={logout}
+                    sx={{ bgcolor: 'background.paper', boxShadow: 1 }}
+                >
+                    Logout
+                </Button>
+            </Box>
+
+            <Container maxWidth="lg">
+                <MotionBox
+                    initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
+                    sx={{ mb: 6, mt: 4 }}
                 >
-                    <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-                        Hello, {userName}
+                    <Typography variant="h3" sx={{ fontWeight: 800, mb: 1, background: `linear-gradient(45deg, ${muiTheme.palette.primary.main}, ${muiTheme.palette.secondary.main})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                        Dashboard
                     </Typography>
-                </motion.div>
+                    <Typography variant="h6" color="text.secondary">
+                        Welcome back, {user.username}
+                    </Typography>
+                </MotionBox>
 
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: { xs: 2, sm: 3 }, mt: { xs: 3, sm: 4 } }}>
-                    {/* TOTP Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        <MotionPaper
-                            whileHover={{ y: -3 }}
-                            sx={{
-                                p: { xs: 3, sm: 4 },
-                                bgcolor: 'background.paper',
-                                border: 1,
-                                borderColor: 'divider',
-                                height: '100%',
-                                display: 'flex',
-                                flexDirection: 'column',
-                            }}
-                        >
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                    <Box sx={{
-                                        p: 1,
-                                        borderRadius: 2,
-                                        bgcolor: 'primary.main',
-                                        color: 'white',
-                                        display: 'flex'
-                                    }}>
-                                        <Security sx={{ fontSize: 20 }} />
-                                    </Box>
-                                    <Typography variant="subtitle1" fontWeight={600}>Time based OTP</Typography>
-                                </Box>
-                                <Chip
-                                    icon={<CheckCircle sx={{ fontSize: 12 }} />}
-                                    label="Enabled"
-                                    color="success"
-                                    size="small"
-                                    sx={{ fontWeight: 600, height: 24, '& .MuiChip-label': { px: 1 } }}
-                                />
-                            </Box>
-
-                            <Tooltip title="Click to copy" arrow>
-                                <Box
-                                    onClick={handleCopyTotp}
-                                    sx={{
-                                        bgcolor: 'action.hover',
-                                        p: 2,
-                                        borderRadius: 2,
-                                        mb: 2,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        flex: 1,
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                        '&:hover': { bgcolor: 'action.selected' },
-                                        minHeight: 60,
-                                    }}
-                                >
-                                    <Typography
-                                        sx={{
-                                            fontFamily: 'monospace',
-                                            fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                                            fontWeight: 700,
-                                            letterSpacing: '0.15em',
-                                            color: 'primary.main',
-                                        }}
-                                    >
-                                        {totpCode.slice(0, 3)} {totpCode.slice(3)}
-                                    </Typography>
-                                    <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                                        <CircularProgress
-                                            variant="determinate"
-                                            value={totpProgress}
-                                            size={28}
-                                            thickness={4}
-                                            color="primary"
-                                        />
-                                        <Box sx={{
-                                            position: 'absolute',
-                                            top: 0, left: 0, bottom: 0, right: 0,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                        }}>
-                                            <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ fontSize: 10 }}>
-                                                {Math.round(totpProgress / (100 / 30))}
-                                            </Typography>
-                                        </Box>
-                                    </Box>
-                                </Box>
-                            </Tooltip>
-
-                            <Box sx={{
-                                display: 'flex',
-                                bgcolor: 'action.hover',
-                                borderRadius: 100,
-                                p: 0.5,
-                                gap: 0.5,
-                            }}>
-                                <Tooltip title="Add existing code to new authenticator" arrow>
-                                    <Button
-                                        size="small"
-                                        startIcon={<QrCode2 sx={{ fontSize: { xs: 16, sm: 18 } }} />}
-                                        onClick={handleRescanTotp}
-                                        sx={{ flex: 1, borderRadius: 100, py: 0.75, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                                    >
-                                        Rescan
-                                    </Button>
-                                </Tooltip>
-                                <Tooltip title="Generate new code (old codes stop working)" arrow>
-                                    <Button
-                                        size="small"
-                                        startIcon={<Refresh sx={{ fontSize: { xs: 16, sm: 18 } }} />}
-                                        onClick={handleResetTotp}
-                                        sx={{ flex: 1, borderRadius: 100, py: 0.75, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                                    >
-                                        Reset
-                                    </Button>
-                                </Tooltip>
-                            </Box>
-                        </MotionPaper>
-                    </motion.div>
-
+                <Grid container spacing={3}>
                     {/* Upload Link Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                    >
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <MotionPaper
-                            whileHover={{ y: -3 }}
-                            sx={{
-                                p: { xs: 3, sm: 4 },
-                                bgcolor: 'background.paper',
-                                border: 1,
-                                borderColor: 'divider',
-                                height: '100%',
-                                display: 'flex',
-                                flexDirection: 'column',
-                            }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                            elevation={0}
+                            sx={{ p: 3, height: '100%', border: '1px solid', borderColor: 'divider', position: 'relative', overflow: 'hidden' }}
                         >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                                <Box sx={{
-                                    p: 1,
-                                    borderRadius: 2,
-                                    bgcolor: 'secondary.main',
-                                    color: 'white',
-                                    display: 'flex'
-                                }}>
-                                    <LinkIcon sx={{ fontSize: 20 }} />
-                                </Box>
-                                <Typography variant="subtitle1" fontWeight={600}>Upload Link</Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                <CloudUpload color="primary" sx={{ mr: 1 }} />
+                                <Typography variant="h6" fontWeight={600}>Your Upload Link</Typography>
                             </Box>
-                            <Box sx={{
-                                bgcolor: 'action.hover',
-                                p: 2,
-                                borderRadius: 2,
-                                mb: 2,
-                                fontFamily: 'monospace',
-                                fontSize: { xs: '0.8rem', sm: '0.9rem' },
-                                wordBreak: 'break-all',
-                                flex: 1,
-                                display: 'flex',
-                                alignItems: 'center',
-                                minHeight: 60,
-                            }}>
-                                /{uploadLink}
-                            </Box>
-                            <Box sx={{
-                                display: 'flex',
-                                bgcolor: 'action.hover',
-                                borderRadius: 100,
-                                p: 0.5,
-                                gap: 0.5,
-                            }}>
-                                <Button
-                                    size="small"
-                                    startIcon={<ContentCopy sx={{ fontSize: { xs: 16, sm: 18 } }} />}
-                                    onClick={handleCopyLink}
-                                    sx={{ flex: 1, borderRadius: 100, py: 0.75, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                                >
-                                    Copy
-                                </Button>
-                                <Button
-                                    size="small"
-                                    startIcon={<Edit sx={{ fontSize: { xs: 16, sm: 18 } }} />}
-                                    onClick={() => {
-                                        localStorage.setItem('link_mode', 'update');
-                                        router.push('/setup-link');
-                                    }}
-                                    sx={{ flex: 1, borderRadius: 100, py: 0.75, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                                >
-                                    Change
-                                </Button>
-                            </Box>
-                        </MotionPaper>
-                    </motion.div>
-                </Box>
 
-                {/* Upload Files Card */}
-                <Box sx={{ mt: { xs: 2, sm: 3 } }}>
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                    >
+                            <Typography color="text.secondary" paragraph>
+                                Share this link to receive files securely.
+                            </Typography>
+
+                            <Paper
+                                variant="outlined"
+                                sx={{
+                                    p: 2,
+                                    bgcolor: 'action.hover',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 1,
+                                    mb: 2,
+                                    cursor: 'pointer'
+                                }}
+                                onClick={handleCopyLink}
+                            >
+                                <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                    {uploadLink}
+                                </Typography>
+                                <Tooltip title={copiedLink ? "Copied!" : "Copy Link"} arrow>
+                                    <IconButton size="small" edge="end">
+                                        {copiedLink ? <CheckCircle color="success" fontSize="small" /> : <ContentCopy fontSize="small" />}
+                                    </IconButton>
+                                </Tooltip>
+                            </Paper>
+
+                            <Button
+                                variant="outlined"
+                                fullWidth
+                                startIcon={<Settings />}
+                                onClick={() => router.push('/setup-link')}
+                            >
+                                Customize Link
+                            </Button>
+                        </MotionPaper>
+                    </Grid>
+
+                    {/* TOTP Status Card */}
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <MotionPaper
-                            whileHover={{ scale: 1.01 }}
-                            onClick={() => router.push(`/${uploadLink}`)}
-                            sx={{
-                                p: { xs: 3, sm: 4 },
-                                background: 'linear-gradient(135deg, #00897B 0%, #00695C 100%)',
-                                color: 'white',
-                                cursor: 'pointer',
-                            }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            elevation={0}
+                            sx={{ p: 3, height: '100%', border: '1px solid', borderColor: 'divider' }}
                         >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, sm: 3 } }}>
-                                <CloudUpload sx={{ fontSize: { xs: 36, sm: 48 } }} />
-                                <Box>
-                                    <Typography variant="h6" fontWeight="700" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                                        Upload Files
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ opacity: 0.9, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                                        Visit your public upload page
-                                    </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                <Warning color={user.totp_secret ? "success" : "warning"} sx={{ mr: 1 }} />
+                                <Typography variant="h6" fontWeight={600}>Authentication</Typography>
+                            </Box>
+
+                            <Typography color="text.secondary" paragraph>
+                                {user.totp_secret
+                                    ? "Two-Factor Authentication is active. Your account and uploads are secure."
+                                    : "Two-Factor Authentication is NOT set up. Please set it up to enable uploads."}
+                            </Typography>
+
+                            <Button
+                                variant="contained"
+                                color={user.totp_secret ? "secondary" : "primary"}
+                                fullWidth
+                                onClick={() => router.push('/totp-setup')}
+                            >
+                                {user.totp_secret ? "Reset TOTP" : "Setup 2FA"}
+                            </Button>
+                        </MotionPaper>
+                    </Grid>
+
+                    {/* Drive Folder Card */}
+                    <Grid size={{ xs: 12 }}>
+                        <MotionPaper
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            elevation={0}
+                            sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}
+                        >
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Folder color="primary" sx={{ mr: 1 }} />
+                                    <Typography variant="h6" fontWeight={600}>Google Drive Folder</Typography>
                                 </Box>
+                                <Button
+                                    startIcon={<Edit />}
+                                    size="small"
+                                    onClick={() => setOpenFolderDialog(true)}
+                                >
+                                    Change Folder
+                                </Button>
+                            </Box>
+
+                            <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
+                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                    Current Upload Folder
+                                </Typography>
+                                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                    {user.folder_name || 'Not Configured (Files will go to Root)'}
+                                </Typography>
+                                {user.folder_id && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                                        ID: {user.folder_id}
+                                    </Typography>
+                                )}
                             </Box>
                         </MotionPaper>
-                    </motion.div>
-                </Box>
+                    </Grid>
+                </Grid>
+
+                {/* Update Folder Dialog */}
+                <Dialog
+                    open={openFolderDialog}
+                    onClose={() => !isUpdatingFolder && setOpenFolderDialog(false)}
+                    fullWidth
+                    maxWidth="xs"
+                >
+                    <DialogTitle>Update Drive Folder</DialogTitle>
+                    <DialogContent>
+                        <Typography variant="body2" color="text.secondary" paragraph>
+                            Enter the name of the folder where uploads should be saved.
+                            This will create a new folder in your Google Drive if it doesn't exist.
+                        </Typography>
+                        <TextField
+                            autoFocus
+                            margin="dense"
+                            label="Folder Name"
+                            fullWidth
+                            variant="outlined"
+                            value={folderName}
+                            onChange={(e) => setFolderName(e.target.value)}
+                            disabled={isUpdatingFolder}
+                            error={!!folderError}
+                            helperText={folderError}
+                        />
+                    </DialogContent>
+                    <DialogActions sx={{ p: 2 }}>
+                        <Button onClick={() => setOpenFolderDialog(false)} disabled={isUpdatingFolder}>
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleUpdateFolder}
+                            variant="contained"
+                            disabled={isUpdatingFolder}
+                            startIcon={isUpdatingFolder ? <CircularProgress size={20} color="inherit" /> : <Save />}
+                        >
+                            {isUpdatingFolder ? 'Saving...' : 'Save'}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Container>
-
-            <Snackbar
-                open={snackbarOpen}
-                autoHideDuration={2000}
-                onClose={() => setSnackbarOpen(false)}
-                message={snackbarMessage}
-            />
         </Box>
     );
 }

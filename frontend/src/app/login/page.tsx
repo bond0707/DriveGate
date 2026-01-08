@@ -7,6 +7,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SecurityIcon from '@mui/icons-material/Security';
 import SpeedIcon from '@mui/icons-material/Speed';
 import ThemeToggle from '@/components/ThemeToggle';
+import { api } from '@/lib/api';
 
 const MotionBox = motion.create(Box);
 const MotionPaper = motion.create(Paper);
@@ -14,8 +15,13 @@ const MotionPaper = motion.create(Paper);
 export default function LoginPage() {
   const router = useRouter();
 
-  const handleGoogleSignIn = () => {
-    router.push('/dashboard');
+  const handleGoogleSignIn = async () => {
+    try {
+      const response = await api.get('/auth/google/login');
+      window.location.href = response.data.auth_url;
+    } catch (error) {
+      console.error('Failed to get login URL:', error);
+    }
   };
 
   return (
