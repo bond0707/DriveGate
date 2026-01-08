@@ -1,4 +1,6 @@
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
+
+export const axiosInstance = axios;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
