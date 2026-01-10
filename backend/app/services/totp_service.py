@@ -24,7 +24,7 @@ class TOTPService:
         totp_obj = pyotp.TOTP(totp_secret)
         uri = totp_obj.provisioning_uri(
             name = email,
-            image = settings.APP_LOGO, #https://www.qr-code-generator.com/
+            # image = settings.APP_LOGO, #https://www.qr-code-generator.com/
             issuer_name = settings.APP_NAME
         )
         return uri

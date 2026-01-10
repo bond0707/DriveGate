@@ -59,7 +59,7 @@ export default function PublicUploadPage() {
 
     // Steps: totp -> upload -> success
     const [step, setStep] = useState<'totp' | 'upload' | 'success'>('totp');
-    
+
     // TOTP State
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [isVerifying, setIsVerifying] = useState(false);
@@ -118,7 +118,7 @@ export default function PublicUploadPage() {
         if (value && index < 5) {
             setTimeout(() => inputRefs.current[index + 1]?.focus(), 0);
         }
-        
+
         // Auto-submit if filled
         if (newOtp.every(d => d !== '')) {
             verifyTotp(newOtp.join(''));
@@ -141,7 +141,7 @@ export default function PublicUploadPage() {
             if (i < 6) newOtp[i] = char;
         });
         setOtp(newOtp);
-        
+
         if (newOtp.every(d => d !== '')) {
             verifyTotp(newOtp.join(''));
         }
@@ -150,7 +150,7 @@ export default function PublicUploadPage() {
     const verifyTotp = async (code: string) => {
         setIsVerifying(true);
         setVerifyError('');
-        
+
         // Artificial delay for UX
         await new Promise(r => setTimeout(r, 800));
 
@@ -210,7 +210,6 @@ export default function PublicUploadPage() {
                 file_name: fileStatus.file.name,
                 file_size: fileStatus.file.size,
                 mime_type: fileStatus.file.type || 'application/octet-stream',
-                md5_checksum: "placeholder" // Backend requires field, but logic handled by Drive
             }, {
                 headers: { 'Authorization': `Bearer ${uploadToken}` }
             });
@@ -222,7 +221,7 @@ export default function PublicUploadPage() {
             const uploadResponse = await fetch(upload_url, {
                 method: 'PUT',
                 body: fileStatus.file,
-                credentials: 'omit', 
+                credentials: 'omit',
                 headers: {
                     'Content-Type': fileStatus.file.type || 'application/octet-stream',
                 }
@@ -237,18 +236,18 @@ export default function PublicUploadPage() {
 
         } catch (err: any) {
             console.error(`Upload error for ${fileStatus.file.name}:`, err);
-            setFiles(prev => prev.map((f, i) => i === fileIndex ? { 
-                ...f, 
-                status: 'error', 
-                progress: 0, 
-                error: err.message || 'Upload failed' 
+            setFiles(prev => prev.map((f, i) => i === fileIndex ? {
+                ...f,
+                status: 'error',
+                progress: 0,
+                error: err.message || 'Upload failed'
             } : f));
         }
     };
 
     const handleUploadAll = async () => {
         setIsUploading(true);
-        
+
         // Filter pending files and map them to their current index
         const pendingFiles = files
             .map((f, index) => ({ ...f, originalIndex: index }))
@@ -257,7 +256,7 @@ export default function PublicUploadPage() {
         // Upload sequentially to avoid browser connection limits on large batches
         // (or use Promise.all for parallel if preferred)
         await Promise.all(pendingFiles.map(f => uploadSingleFile(f.originalIndex)));
-        
+
         setIsUploading(false);
     };
 
@@ -272,9 +271,9 @@ export default function PublicUploadPage() {
     // Check completion
     useEffect(() => {
         if (files.length > 0 && !isUploading && files.every(f => f.status === 'success')) {
-             // Optional: Auto-advance to success screen after short delay
-             const timer = setTimeout(() => setStep('success'), 1000);
-             return () => clearTimeout(timer);
+            // Optional: Auto-advance to success screen after short delay
+            const timer = setTimeout(() => setStep('success'), 1000);
+            return () => clearTimeout(timer);
         }
     }, [files, isUploading]);
 
@@ -301,7 +300,7 @@ export default function PublicUploadPage() {
 
             <Container maxWidth="sm">
                 <AnimatePresence mode="wait">
-                    
+
                     {/* STEP 1: TOTP VERIFICATION */}
                     {step === 'totp' && (
                         <MotionPaper
@@ -492,9 +491,9 @@ export default function PublicUploadPage() {
                                                             )}
                                                             <Typography variant="caption">
                                                                 {fileStatus.status === 'success' ? 'Uploaded' :
-                                                                 fileStatus.status === 'error' ? 'Failed' :
-                                                                 fileStatus.status === 'uploading' ? 'Uploading...' :
-                                                                 `${(fileStatus.file.size / 1024 / 1024).toFixed(2)} MB`}
+                                                                    fileStatus.status === 'error' ? 'Failed' :
+                                                                        fileStatus.status === 'uploading' ? 'Uploading...' :
+                                                                            `${(fileStatus.file.size / 1024 / 1024).toFixed(2)} MB`}
                                                             </Typography>
                                                         </Box>
                                                     }
@@ -564,10 +563,12 @@ export default function PublicUploadPage() {
                             <Typography color="text.secondary" sx={{ mb: 4 }}>
                                 {files.length} file{files.length !== 1 ? 's' : ''} uploaded successfully.
                             </Typography>
-                            
+
                             <Button variant="outlined" onClick={() => {
-                                setStep('upload');
+                                setStep('totp');
                                 setFiles([]);
+                                setOtp(['', '', '', '', '', '']);
+                                setUploadToken(null);
                             }}>
                                 Upload More
                             </Button>

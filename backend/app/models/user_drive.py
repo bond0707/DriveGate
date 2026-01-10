@@ -3,7 +3,7 @@ from app.database.connection import Base
 from app.database.enums import drive_type_enum
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import (
-    CHAR, 
+    Text, 
     String, 
     BigInteger, 
     ForeignKey,
@@ -26,7 +26,7 @@ class UserDriveModel(Base):
         nullable=False
     )
     totp_secret: Mapped[str] = mapped_column(
-        CHAR(32), 
+        Text, 
         unique=True,
         nullable=True
     )
