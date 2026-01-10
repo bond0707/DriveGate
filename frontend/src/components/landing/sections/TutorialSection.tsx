@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, forwardRef, useImperativeHandle } from 'react';
 import { Box, Container, Typography } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, QrCode, Upload, LogIn, Link as LinkIcon, FolderPlus } from 'lucide-react';
@@ -46,8 +46,16 @@ const tutorialSteps = [
     },
 ];
 
-export default function TutorialSection() {
+export interface TutorialSectionHandle {
+    resetStep: () => void;
+}
+
+const TutorialSection = forwardRef<TutorialSectionHandle>((_, ref) => {
     const [activeStep, setActiveStep] = useState(0);
+
+    useImperativeHandle(ref, () => ({
+        resetStep: () => setActiveStep(0),
+    }));
 
     const handleNext = () => {
         if (activeStep < tutorialSteps.length - 1) {
@@ -304,4 +312,8 @@ export default function TutorialSection() {
             </Container>
         </Box>
     );
-}
+});
+
+TutorialSection.displayName = 'TutorialSection';
+
+export default TutorialSection;

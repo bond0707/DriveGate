@@ -8,6 +8,7 @@ interface User {
     id: number;
     username: string;
     email: string;
+    picture_url?: string | null;
     totp_secret?: string | null;
     folder_id?: string | null;
     folder_name?: string | null;

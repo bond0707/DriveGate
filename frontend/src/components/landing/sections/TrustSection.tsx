@@ -6,11 +6,19 @@ import AnimatedSection from '../../AnimatedSection';
 const permissions = [
     {
         scope: 'drive.file',
-        description: 'DriveGate creates a folder during setup and stores uploaded files there. We can only access this folder—not your other Drive files.',
+        description: 'Creates a folder during setup and stores uploaded files there. We can only access this folder, not your other Drive files.',
     },
     {
-        scope: 'openid, email, profile',
-        description: 'Used strictly for identity verification. We don\'t read your emails or contacts.',
+        scope: 'openid',
+        description: 'Provides a unique Google identifier (UUID) for account uniqueness in our database.',
+    },
+    {
+        scope: 'profile',
+        description: 'Provides your display name (used as username) and profile picture (shown in dashboard).',
+    },
+    {
+        scope: 'email',
+        description: 'Provides your email address for account identification and storage.',
     },
 ];
 

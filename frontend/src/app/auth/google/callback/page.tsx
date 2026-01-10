@@ -2,16 +2,20 @@
 
 import { useEffect, useRef, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Box, CircularProgress, Typography, Button, Alert } from '@mui/material';
+import { Box, Typography, Button, Alert, useTheme } from '@mui/material';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import SquircleLoader from '@/components/SquircleLoader';
 
 function AuthCallbackContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const theme = useTheme();
     const { login } = useAuth();
     const processedRef = useRef(false);
     const [error, setError] = useState('');
+
+    const loaderColor = theme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
 
     useEffect(() => {
         const handleCallback = async () => {
@@ -54,7 +58,8 @@ function AuthCallbackContent() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 3,
-                p: 3
+                p: 3,
+                bgcolor: 'background.default'
             }}>
                 <Alert severity="error" variant="filled" sx={{ width: '100%', maxWidth: 400 }}>
                     {error}
@@ -73,29 +78,38 @@ function AuthCallbackContent() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 3
+            gap: 3,
+            bgcolor: 'background.default'
         }}>
-            <CircularProgress />
-            <Typography>Completing sign in...</Typography>
+            <SquircleLoader size={50} color={loaderColor} />
+            <Typography color="text.secondary">Completing sign in...</Typography>
+        </Box>
+    );
+}
+
+function AuthCallbackFallback() {
+    const theme = useTheme();
+    const loaderColor = theme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
+
+    return (
+        <Box sx={{
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 3,
+            bgcolor: 'background.default'
+        }}>
+            <SquircleLoader size={50} color={loaderColor} />
+            <Typography color="text.secondary">Loading...</Typography>
         </Box>
     );
 }
 
 export default function AuthCallbackPage() {
     return (
-        <Suspense fallback={
-            <Box sx={{
-                height: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 3
-            }}>
-                <CircularProgress />
-                <Typography>Loading...</Typography>
-            </Box>
-        }>
+        <Suspense fallback={<AuthCallbackFallback />}>
             <AuthCallbackContent />
         </Suspense>
     );

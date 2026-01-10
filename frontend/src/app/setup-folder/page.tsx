@@ -19,6 +19,8 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import SquircleLoader from '@/components/SquircleLoader';
+import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 const MotionPaper = motion.create(Paper);
 const MotionBox = motion.create(Box);
@@ -26,6 +28,7 @@ const MotionBox = motion.create(Box);
 export default function SetupFolderPage() {
     const router = useRouter();
     const muiTheme = useTheme();
+    const { user, checkAuth } = useAuth();
     const [folderName, setFolderName] = useState('');
     const [error, setError] = useState('');
     const [isCreating, setIsCreating] = useState(false);
@@ -80,11 +83,22 @@ export default function SetupFolderPage() {
         }
 
         setIsCreating(true);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        setError('');
 
-        localStorage.setItem('folder_name', folderName.trim());
-        localStorage.removeItem('folder_mode');
-        router.push('/dashboard');
+        try {
+            await api.post('/auth/me/update-drive-folder', {
+                folder_name: folderName.trim(),
+                drive_type: 'GOOGLE_DRIVE'
+            });
+            await checkAuth(); // Refresh user context
+            localStorage.removeItem('folder_mode');
+            router.push('/dashboard');
+        } catch (err: any) {
+            console.error('Failed to create folder:', err);
+            setError(err.response?.data?.detail || 'Failed to create folder. Please try again.');
+        } finally {
+            setIsCreating(false);
+        }
     };
 
     return (

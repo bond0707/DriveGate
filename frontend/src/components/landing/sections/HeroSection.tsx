@@ -39,7 +39,7 @@ function HeroVisual({ otpDigits }: { otpDigits: string[] }) {
                     // Start verifying after all digits filled
                     setTimeout(() => setState('verifying'), 800);
                 }
-            }, 500);
+            }, 350);
 
             // Show verified after verifying (longer wait)
             setTimeout(() => setState('verified'), 6000);
@@ -146,7 +146,7 @@ function HeroVisual({ otpDigits }: { otpDigits: string[] }) {
                                         : undefined,
                             }}
                             transition={{
-                                opacity: { duration: 0.3 },
+                                opacity: { duration: 0.8 },
                                 backgroundColor: { duration: 0.4 },
                             }}
                             sx={{
@@ -174,9 +174,10 @@ function HeroVisual({ otpDigits }: { otpDigits: string[] }) {
 
 interface HeroSectionProps {
     onVisibilityChange: (visible: boolean) => void;
+    onHowItWorksClick?: () => void;
 }
 
-export default function HeroSection({ onVisibilityChange }: HeroSectionProps) {
+export default function HeroSection({ onVisibilityChange, onHowItWorksClick }: HeroSectionProps) {
     const { scrollTo } = useSmoothScroll();
 
     // Generate random OTP on mount
@@ -195,33 +196,6 @@ export default function HeroSection({ onVisibilityChange }: HeroSectionProps) {
                 pb: { xs: 6, md: 0 },
             }}
         >
-            {/* Background gradient orbs */}
-            <Box
-                sx={{
-                    position: 'absolute',
-                    top: '10%',
-                    left: '-10%',
-                    width: '40%',
-                    height: '40%',
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(0, 137, 123, 0.15) 0%, transparent 70%)',
-                    filter: 'blur(60px)',
-                    pointerEvents: 'none',
-                }}
-            />
-            <Box
-                sx={{
-                    position: 'absolute',
-                    bottom: '5%',
-                    right: '-5%',
-                    width: '35%',
-                    height: '35%',
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(92, 107, 192, 0.12) 0%, transparent 70%)',
-                    filter: 'blur(80px)',
-                    pointerEvents: 'none',
-                }}
-            />
 
             <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
                 <Box
@@ -259,7 +233,7 @@ export default function HeroSection({ onVisibilityChange }: HeroSectionProps) {
                                     fontSize: { xs: '0.95rem', md: '1.125rem' },
                                 }}
                             >
-                                Upload files to your Google Drive from any device—public or private—without ever typing your password. Just scan, verify, and drop.
+                                Upload files to your Google Drive from any device without ever typing your password. Just scan, verify, and drop.
                             </Typography>
                         </AnimatedSection>
 
@@ -295,7 +269,7 @@ export default function HeroSection({ onVisibilityChange }: HeroSectionProps) {
                                     <Button
                                         variant="outlined"
                                         size="large"
-                                        onClick={() => scrollTo('#tutorial')}
+                                        onClick={onHowItWorksClick || (() => scrollTo('#tutorial'))}
                                         sx={{
                                             py: { xs: 1, md: 1.5 },
                                             px: { xs: 2, md: 4 },

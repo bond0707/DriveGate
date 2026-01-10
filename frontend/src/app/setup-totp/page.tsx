@@ -21,9 +21,9 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect, Suspense } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
 import ThemeToggle from '@/components/ThemeToggle';
 import SquircleLoader from '@/components/SquircleLoader';
+import StyledQRCode from '@/components/StyledQRCode';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
@@ -34,7 +34,7 @@ function TOTPSetupContent() {
     const router = useRouter();
     const muiTheme = useTheme();
     const { checkAuth } = useAuth();
-    
+
     // UI State
     const [step, setStep] = useState<'qr' | 'verify' | 'success'>('qr');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -53,32 +53,40 @@ function TOTPSetupContent() {
 
     const loaderColor = muiTheme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
 
-    // 1. Initialize Mode
+    // 1. Initialize Mode and Fetch TOTP Secret based on mode
     useEffect(() => {
         const totpMode = localStorage.getItem('totp_mode');
-        if (totpMode === 'rescan') {
-            setMode('rescan');
-        } else if (totpMode === 'reset') {
-            setMode('reset');
-        } else {
-            setMode('first');
-        }
-    }, []);
+        let currentMode: 'first' | 'rescan' | 'reset' = 'first';
 
-    // 2. Fetch TOTP Secret from API
-    useEffect(() => {
+        if (totpMode === 'rescan') {
+            currentMode = 'rescan';
+        } else if (totpMode === 'reset') {
+            currentMode = 'reset';
+        }
+        setMode(currentMode);
+
         const fetchSetup = async () => {
             try {
-                const response = await api.get('/totp/setup');
+                // For rescan mode, fetch existing TOTP secret from backend
+                // For reset or first-time setup, generate a new secret
+                const endpoint = currentMode === 'rescan' ? '/totp/rescan' : '/totp/setup';
+                const response = await api.get(endpoint);
+
                 setSecret(response.data.totp_secret);
                 setProvisioningUri(response.data.provisioning_uri);
-            } catch (err) {
+            } catch (err: any) {
                 console.error('Failed to fetch TOTP setup:', err);
-                setError('Failed to generate TOTP secret. Please refresh.');
+                // If rescan fails (e.g., no existing secret), show helpful message
+                if (currentMode === 'rescan' && err.response?.status === 404) {
+                    setError('No existing TOTP found. Please set up a new one.');
+                } else {
+                    setError('Failed to load TOTP. Please refresh.');
+                }
             } finally {
                 setIsLoading(false);
             }
         };
+
         fetchSetup();
     }, []);
 
@@ -112,7 +120,7 @@ function TOTPSetupContent() {
         // For reset mode, set flag to skip TOTP redirect since we're canceling
         if (mode === 'reset') {
             localStorage.setItem('skip_totp_setup', 'true');
-            localStorage.setItem('totp_enabled', 'true'); 
+            localStorage.setItem('totp_enabled', 'true');
         }
         router.push('/dashboard');
     };
@@ -185,7 +193,7 @@ function TOTPSetupContent() {
             localStorage.setItem('totp_enabled', 'true');
             localStorage.removeItem('totp_mode');
             await checkAuth();
-            
+
             setStep('success');
 
             // Intelligent Redirect
@@ -273,7 +281,7 @@ function TOTPSetupContent() {
                                     width: { xs: 60, sm: 80 },
                                     height: { xs: 60, sm: 80 },
                                     borderRadius: '50%',
-                                    bgcolor: '#0D9488',
+                                    bgcolor: '#00897B',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -302,30 +310,25 @@ function TOTPSetupContent() {
                                     width: 'fit-content',
                                     mx: 'auto',
                                     mb: 3,
-                                    bgcolor: 'white',
-                                    borderRadius: 3,
-                                    p: 2,
-                                    border: '2px solid',
-                                    borderColor: 'divider',
                                     display: 'flex',
                                     justifyContent: 'center',
                                     alignItems: 'center'
                                 }}
                             >
                                 {provisioningUri && (
-                                    <QRCodeSVG value={provisioningUri} size={180} />
+                                    <StyledQRCode value={provisioningUri} size={200} logoSize={45} />
                                 )}
                             </MotionBox>
 
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                                 Or enter manually:
                             </Typography>
-                            
-                            <Box sx={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                gap: 1, 
+
+                            <Box sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 1,
                                 mb: 3,
                                 bgcolor: 'action.hover',
                                 p: 1,

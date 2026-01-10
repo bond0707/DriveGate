@@ -16,7 +16,6 @@ import {
     ListItemSecondaryAction,
     Tooltip,
     useTheme,
-    CircularProgress,
     Dialog,
     DialogTitle,
     DialogContent,
@@ -34,7 +33,7 @@ import {
     Lock,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import SquircleLoader from '@/components/SquircleLoader';
@@ -53,13 +52,17 @@ interface FileStatus {
 
 export default function PublicUploadPage() {
     const params = useParams();
+    const router = useRouter();
     const slug = params.slug as string;
     const theme = useTheme();
     const loaderColor = theme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
 
+    // Page Loading State (checking if slug exists)
+    const [isPageLoading, setIsPageLoading] = useState(true);
+
     // Steps: totp -> upload -> success
     const [step, setStep] = useState<'totp' | 'upload' | 'success'>('totp');
-    
+
     // TOTP State
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [isVerifying, setIsVerifying] = useState(false);
@@ -71,15 +74,35 @@ export default function PublicUploadPage() {
     const [files, setFiles] = useState<FileStatus[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [backWarningOpen, setBackWarningOpen] = useState(false);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     // --- Effects ---
 
+    // Validate slug exists on mount
+    useEffect(() => {
+        const validateSlug = async () => {
+            try {
+                // Call backend to check if this slug exists
+                await api.get(`/url/validate-slug?url_slug=${slug}`);
+                setIsPageLoading(false);
+            } catch (err: any) {
+                console.error('Slug validation failed:', err);
+                // If slug doesn't exist (404) or any error, redirect to landing page
+                router.replace('/');
+            }
+        };
+
+        if (slug) {
+            validateSlug();
+        }
+    }, [slug, router]);
+
     // Focus first input on mount
     useEffect(() => {
-        if (step === 'totp') {
+        if (step === 'totp' && !isPageLoading) {
             setTimeout(() => inputRefs.current[0]?.focus(), 100);
         }
-    }, [step]);
+    }, [step, isPageLoading]);
 
     // Handle back button warning during upload
     useEffect(() => {
@@ -118,7 +141,7 @@ export default function PublicUploadPage() {
         if (value && index < 5) {
             setTimeout(() => inputRefs.current[index + 1]?.focus(), 0);
         }
-        
+
         // Auto-submit if filled
         if (newOtp.every(d => d !== '')) {
             verifyTotp(newOtp.join(''));
@@ -141,7 +164,7 @@ export default function PublicUploadPage() {
             if (i < 6) newOtp[i] = char;
         });
         setOtp(newOtp);
-        
+
         if (newOtp.every(d => d !== '')) {
             verifyTotp(newOtp.join(''));
         }
@@ -150,7 +173,7 @@ export default function PublicUploadPage() {
     const verifyTotp = async (code: string) => {
         setIsVerifying(true);
         setVerifyError('');
-        
+
         // Artificial delay for UX
         await new Promise(r => setTimeout(r, 800));
 
@@ -197,71 +220,93 @@ export default function PublicUploadPage() {
         setFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    const uploadSingleFile = async (fileIndex: number) => {
+    const uploadSingleFile = async (fileIndex: number, signal?: AbortSignal) => {
         const fileStatus = files[fileIndex];
         if (fileStatus.status === 'success') return;
 
-        setFiles(prev => prev.map((f, i) => i === fileIndex ? { ...f, status: 'uploading' } : f));
+        setFiles(prev => prev.map((f, i) => i === fileIndex ? { ...f, status: 'uploading', progress: 0 } : f));
 
         try {
             // 1. Get Signed URL
-            // We use a clean axios instance or fetch to ensure no global auth headers conflict
             const linkResponse = await api.post('/url/get-upload-link', {
                 file_name: fileStatus.file.name,
                 file_size: fileStatus.file.size,
                 mime_type: fileStatus.file.type || 'application/octet-stream',
-                md5_checksum: "placeholder" // Backend requires field, but logic handled by Drive
+                md5_checksum: "placeholder"
             }, {
-                headers: { 'Authorization': `Bearer ${uploadToken}` }
+                headers: { 'Authorization': `Bearer ${uploadToken}` },
+                signal,
             });
 
             const { upload_url } = linkResponse.data;
 
-            // 2. Upload to Signed URL using Fetch
-            // 'credentials: omit' is CRITICAL for Google Signed URLs to prevent CORS errors
-            const uploadResponse = await fetch(upload_url, {
-                method: 'PUT',
-                body: fileStatus.file,
-                credentials: 'omit', 
+            // 2. Upload to Signed URL using axios with progress tracking
+            await api.put(upload_url, fileStatus.file, {
                 headers: {
                     'Content-Type': fileStatus.file.type || 'application/octet-stream',
-                }
+                    // Remove Authorization header for Google signed URL
+                    'Authorization': undefined as unknown as string,
+                },
+                // Disable default Authorization header for this request
+                transformRequest: [(data, headers) => {
+                    delete headers['Authorization'];
+                    return data;
+                }],
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = progressEvent.total
+                        ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                        : 0;
+                    setFiles(prev => prev.map((f, i) =>
+                        i === fileIndex ? { ...f, progress: percentCompleted } : f
+                    ));
+                },
+                signal,
             });
-
-            if (!uploadResponse.ok) {
-                throw new Error(`Upload failed: ${uploadResponse.statusText}`);
-            }
 
             // 3. Success
             setFiles(prev => prev.map((f, i) => i === fileIndex ? { ...f, status: 'success', progress: 100 } : f));
 
         } catch (err: any) {
+            // Don't update state if request was cancelled
+            if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+                return;
+            }
             console.error(`Upload error for ${fileStatus.file.name}:`, err);
-            setFiles(prev => prev.map((f, i) => i === fileIndex ? { 
-                ...f, 
-                status: 'error', 
-                progress: 0, 
-                error: err.message || 'Upload failed' 
+            setFiles(prev => prev.map((f, i) => i === fileIndex ? {
+                ...f,
+                status: 'error',
+                progress: 0,
+                error: err.message || 'Upload failed'
             } : f));
         }
     };
 
     const handleUploadAll = async () => {
+        // Create new AbortController for this upload batch
+        abortControllerRef.current = new AbortController();
+        const signal = abortControllerRef.current.signal;
+
         setIsUploading(true);
-        
+
         // Filter pending files and map them to their current index
         const pendingFiles = files
             .map((f, index) => ({ ...f, originalIndex: index }))
             .filter(f => f.status !== 'success');
 
-        // Upload sequentially to avoid browser connection limits on large batches
-        // (or use Promise.all for parallel if preferred)
-        await Promise.all(pendingFiles.map(f => uploadSingleFile(f.originalIndex)));
-        
+        // Upload in parallel, passing the abort signal
+        await Promise.all(pendingFiles.map(f => uploadSingleFile(f.originalIndex, signal)));
+
         setIsUploading(false);
+        abortControllerRef.current = null;
     };
 
     const handleConfirmLeave = () => {
+        // Cancel any in-progress uploads
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+        setIsUploading(false);
         setBackWarningOpen(false);
         setStep('totp');
         setOtp(['', '', '', '', '', '']);
@@ -272,9 +317,9 @@ export default function PublicUploadPage() {
     // Check completion
     useEffect(() => {
         if (files.length > 0 && !isUploading && files.every(f => f.status === 'success')) {
-             // Optional: Auto-advance to success screen after short delay
-             const timer = setTimeout(() => setStep('success'), 1000);
-             return () => clearTimeout(timer);
+            // Optional: Auto-advance to success screen after short delay
+            const timer = setTimeout(() => setStep('success'), 1000);
+            return () => clearTimeout(timer);
         }
     }, [files, isUploading]);
 
@@ -284,6 +329,24 @@ export default function PublicUploadPage() {
         if (type.startsWith('image/')) return <ImageIcon />;
         return <InsertDriveFile />;
     };
+
+    // Check if all files are uploaded and we're transitioning to success
+    const isTransitioningToSuccess = files.length > 0 && !isUploading && files.every(f => f.status === 'success');
+
+    // Loading state while validating slug
+    if (isPageLoading) {
+        return (
+            <Box sx={{
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'background.default'
+            }}>
+                <SquircleLoader size={50} color={loaderColor} />
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{
@@ -301,7 +364,7 @@ export default function PublicUploadPage() {
 
             <Container maxWidth="sm">
                 <AnimatePresence mode="wait">
-                    
+
                     {/* STEP 1: TOTP VERIFICATION */}
                     {step === 'totp' && (
                         <MotionPaper
@@ -349,7 +412,7 @@ export default function PublicUploadPage() {
                                 width: { xs: 60, sm: 80 },
                                 height: { xs: 60, sm: 80 },
                                 borderRadius: '50%',
-                                bgcolor: '#0D9488',
+                                bgcolor: '#00897B',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -428,37 +491,62 @@ export default function PublicUploadPage() {
                                 flexDirection: 'column',
                             }}
                         >
-                            <Typography variant="h6" fontWeight={700} gutterBottom>
+                            <Typography variant="h6" fontWeight={700} gutterBottom sx={{ ms: 2 }}>
                                 Upload Files
                             </Typography>
                             <Typography color="text.secondary" variant="body2" sx={{ mb: 3 }}>
                                 Files will be encrypted and stored securely.
                             </Typography>
 
-                            <Box
-                                {...getRootProps()}
-                                sx={{
-                                    border: '2px dashed',
-                                    borderColor: isDragActive ? 'primary.main' : 'divider',
-                                    borderRadius: 3,
-                                    bgcolor: isDragActive ? 'action.hover' : 'transparent',
-                                    p: 4,
-                                    textAlign: 'center',
-                                    cursor: 'pointer',
-                                    mb: 3,
-                                    transition: 'all 0.2s',
-                                    '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' }
-                                }}
-                            >
-                                <input {...getInputProps()} />
-                                <CloudUpload sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-                                <Typography fontWeight={500}>
-                                    Drag & drop files here, or click to select
-                                </Typography>
-                            </Box>
+                            {/* Hide dropzone when uploading or when all files are uploaded */}
+                            {!isUploading && !isTransitioningToSuccess && (
+                                <Box
+                                    {...getRootProps()}
+                                    sx={{
+                                        border: '2px dashed',
+                                        borderColor: isDragActive ? 'primary.main' : 'divider',
+                                        borderRadius: 3,
+                                        bgcolor: isDragActive ? 'action.hover' : 'transparent',
+                                        p: 4,
+                                        textAlign: 'center',
+                                        cursor: 'pointer',
+                                        m: 2,
+                                        transition: 'all 0.2s',
+                                        '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' }
+                                    }}
+                                >
+                                    <input {...getInputProps()} />
+                                    <CloudUpload sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+                                    <Typography fontWeight={500}>
+                                        Drag & drop files here, or click to select
+                                    </Typography>
+                                </Box>
+                            )}
 
                             {files.length > 0 && (
-                                <Box sx={{ flex: 1, overflowY: 'auto', mb: 3, maxHeight: 300 }}>
+                                <Box sx={{
+                                    flex: 1,
+                                    overflowY: 'auto',
+                                    mb: 3,
+                                    maxHeight: 300,
+                                    mx: 2,
+                                    px: 2.3,
+                                    // Custom scrollbar styling
+                                    '&::-webkit-scrollbar': {
+                                        width: 8,
+                                    },
+                                    '&::-webkit-scrollbar-track': {
+                                        bgcolor: 'action.hover',
+                                        borderRadius: 4,
+                                    },
+                                    '&::-webkit-scrollbar-thumb': {
+                                        bgcolor: '#00897B',
+                                        borderRadius: 4,
+                                        '&:hover': {
+                                            bgcolor: '#00695C',
+                                        },
+                                    },
+                                }}>
                                     <List disablePadding>
                                         {files.map((fileStatus, index) => (
                                             <ListItem
@@ -468,59 +556,93 @@ export default function PublicUploadPage() {
                                                     borderColor: 'divider',
                                                     borderRadius: 2,
                                                     mb: 1,
+                                                    flexDirection: 'column',
+                                                    alignItems: 'stretch',
+                                                    p: 0,
+                                                    overflow: 'hidden',
                                                 }}
                                             >
-                                                <ListItemIcon>
-                                                    {fileStatus.status === 'success' ? (
-                                                        <CheckCircle color="success" />
-                                                    ) : fileStatus.status === 'error' ? (
-                                                        <ErrorIcon color="error" />
-                                                    ) : (
-                                                        getFileIcon(fileStatus.file.type)
-                                                    )}
-                                                </ListItemIcon>
-                                                <ListItemText
-                                                    primary={fileStatus.file.name}
-                                                    secondaryTypographyProps={{ component: 'div' }}
-                                                    secondary={
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                            {fileStatus.status === 'uploading' && (
-                                                                <LinearProgress
-                                                                    variant="indeterminate"
-                                                                    sx={{ width: 100, height: 6, borderRadius: 3 }}
-                                                                />
-                                                            )}
-                                                            <Typography variant="caption">
-                                                                {fileStatus.status === 'success' ? 'Uploaded' :
-                                                                 fileStatus.status === 'error' ? 'Failed' :
-                                                                 fileStatus.status === 'uploading' ? 'Uploading...' :
-                                                                 `${(fileStatus.file.size / 1024 / 1024).toFixed(2)} MB`}
-                                                            </Typography>
-                                                        </Box>
-                                                    }
-                                                />
-                                                <ListItemSecondaryAction>
-                                                    {fileStatus.status === 'pending' || fileStatus.status === 'error' ? (
-                                                        <IconButton edge="end" size="small" onClick={() => removeFile(index)}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', p: 1.5, pr: 6 }}>
+                                                    <ListItemIcon sx={{ minWidth: 40 }}>
+                                                        {fileStatus.status === 'success' ? (
+                                                            <CheckCircle color="success" />
+                                                        ) : fileStatus.status === 'error' ? (
+                                                            <ErrorIcon color="error" />
+                                                        ) : (
+                                                            getFileIcon(fileStatus.file.type)
+                                                        )}
+                                                    </ListItemIcon>
+                                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                                        <Typography noWrap fontWeight={500} fontSize="0.9rem">
+                                                            {fileStatus.file.name}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {fileStatus.status === 'success' ? 'Uploaded' :
+                                                                fileStatus.status === 'error' ? 'Failed' :
+                                                                    fileStatus.status === 'uploading' ? `Uploading... ${fileStatus.progress}%` :
+                                                                        `${(fileStatus.file.size / 1024 / 1024).toFixed(2)} MB`}
+                                                        </Typography>
+                                                    </Box>
+                                                    {(fileStatus.status === 'pending' || fileStatus.status === 'error') && (
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => removeFile(index)}
+                                                            sx={{ position: 'absolute', right: 8 }}
+                                                        >
                                                             <Close fontSize="small" />
                                                         </IconButton>
-                                                    ) : null}
-                                                </ListItemSecondaryAction>
+                                                    )}
+                                                </Box>
+                                                {/* Full-width progress bar at bottom */}
+                                                {fileStatus.status === 'uploading' && (
+                                                    <LinearProgress
+                                                        variant="determinate"
+                                                        value={fileStatus.progress}
+                                                        sx={{
+                                                            height: 4,
+                                                            bgcolor: 'action.hover',
+                                                            '& .MuiLinearProgress-bar': {
+                                                                bgcolor: '#00897B',
+                                                            },
+                                                        }}
+                                                    />
+                                                )}
                                             </ListItem>
                                         ))}
                                     </List>
                                 </Box>
                             )}
 
-                            <Box sx={{ mt: 'auto', display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                                <Button onClick={() => setFiles([])} disabled={isUploading || files.length === 0}>
+                            {/* Action buttons styled like dashboard TOTP card */}
+                            <Box sx={{ display: 'flex', bgcolor: 'action.hover', borderRadius: 100, p: 0.5, gap: 0.5, mt: 'auto', mx: 2, mb: 1 }}>
+                                <Button
+                                    size="small"
+                                    onClick={() => setFiles([])}
+                                    disabled={isUploading || files.length === 0}
+                                    sx={{ flex: 1, borderRadius: 100, py: 0.75, fontSize: '0.875rem' }}
+                                >
                                     Clear All
                                 </Button>
                                 <Button
-                                    variant="contained"
+                                    size="small"
                                     onClick={handleUploadAll}
                                     disabled={files.length === 0 || isUploading || files.every(f => f.status === 'success')}
-                                    startIcon={isUploading ? <CircularProgress size={20} color="inherit" /> : <CloudUpload />}
+                                    startIcon={isUploading ? <SquircleLoader size={16} color="white" /> : <CloudUpload sx={{ fontSize: 18 }} />}
+                                    sx={{
+                                        flex: 1,
+                                        borderRadius: 100,
+                                        py: 0.75,
+                                        fontSize: '0.875rem',
+                                        bgcolor: '#00897B',
+                                        color: 'white',
+                                        '&:hover': {
+                                            bgcolor: '#00695C',
+                                        },
+                                        '&.Mui-disabled': {
+                                            bgcolor: 'action.disabledBackground',
+                                            color: 'action.disabled',
+                                        },
+                                    }}
                                 >
                                     {isUploading ? 'Uploading...' : 'Upload All'}
                                 </Button>
@@ -564,10 +686,12 @@ export default function PublicUploadPage() {
                             <Typography color="text.secondary" sx={{ mb: 4 }}>
                                 {files.length} file{files.length !== 1 ? 's' : ''} uploaded successfully.
                             </Typography>
-                            
+
                             <Button variant="outlined" onClick={() => {
-                                setStep('upload');
+                                setStep('totp');
+                                setOtp(['', '', '', '', '', '']);
                                 setFiles([]);
+                                setUploadToken(null);
                             }}>
                                 Upload More
                             </Button>

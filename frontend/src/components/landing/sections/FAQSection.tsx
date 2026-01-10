@@ -25,6 +25,10 @@ const faqs = [
         question: 'Why do you need Google Drive permissions?',
         answer: 'We use the minimal "drive.file" scope. DriveGate creates a folder during setup (as you specify), and stores files there when users upload them. We cannot see, read, or modify any of your existing personal files.',
     },
+    {
+        question: 'Why are there multiple folders with the same name in my Drive?',
+        answer: 'Google Drive allows multiple folders to have the exact same name. This typically happens if you change your folder name (e.g. from "A" to "B") and then change it back to "A". To protect your privacy, DriveGate simply creates a new folder for the new setting rather than scanning your entire Drive history to find the old one.',
+    },
 ];
 
 export default function FAQSection() {

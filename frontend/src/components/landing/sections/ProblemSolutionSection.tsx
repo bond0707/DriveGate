@@ -74,7 +74,7 @@ export default function ProblemSolutionSection() {
                                 Upload without logging in.
                             </Typography>
                             <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.8 }}>
-                                DriveGate lets you upload files using a temporary 6-digit code from your phone—just like
+                                DriveGate lets you upload files using a temporary 6-digit code from your phone, just like
                                 the codes banking apps use. No password needed on the public device. No trace left behind.
                                 Your files go straight to your Drive, safely.
                             </Typography>

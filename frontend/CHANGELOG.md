@@ -1,93 +1,133 @@
 # Changelog
 
-### Added
-
-#### New Pages
-
-- **Setup Folder Page** (`/setup-folder`) - New page for configuring Google Drive folder name
-  - Integrated into new user setup pipeline: TOTP → Link → Folder → Dashboard
-  - Supports update mode with X button to return to dashboard
-
-#### Dashboard Enhancements
-
-- **Upload Folder Card** - New third card displaying the configured folder name with "Change" button
-- **Delete Account Feature** - Menu item in user avatar dropdown with confirmation dialog
-  - Warning dialog with amber icon
-  - Clears all localStorage data
-  - Shows "Thank You" dialog before redirecting to login
-
-#### Custom Branding
-
-- **Custom Logo Support** - Added theme-aware logo switching
-  - `logo-light.svg` for light mode
-  - `logo-dark.svg` for dark mode
-  - Logo displayed in dashboard app bar and login page headers
-
-#### UX Improvements
-
-- **TOTP Input Sequential Validation** - Boxes are disabled until previous boxes are filled
-- **Auto-focus** - First TOTP box auto-focuses when entering verification step
-- **Browser Back Button Handling**
-  - Setup pages cleanup localStorage properly on back navigation
-  - Slug page shows warning dialog: "You'll need to re-enter your TOTP code and any selected files and upload progress will be lost"
-- **Silent Auto-refresh** - Slug page resets after 5 seconds without visible countdown
-
-### Changed
-
-#### Page Renames
-
-- Renamed `totp-setup` → `setup-totp` for consistency with other setup pages
-
-#### Color Theme Updates
-
-- **Secondary Color** - Changed from coral/orange to rich indigo/purple (`#5C6BC0`)
-- **TOTP Icon** - Unified to deep teal (`#0D9488`) across dashboard, setup-totp, and slug pages
-- **Phone Icon** - Changed to distinct coral/pink (`#EC4899`) on setup-totp page
-- **Folder Icon** - Changed to amber/gold (`#F59E0B`)
-- **Account Avatar** - Changed to outlined style with teal border (`#0D9488`)
-- **Theme Toggle Sun Icon** - Changed from `LightMode` to `WbSunny` with warm amber color (`#FFA726`)
-
-#### Redirect Logic
-
-- **Rescan/Reset TOTP** - Now redirects directly to dashboard instead of going through full setup pipeline
-- **Setup Pages Close Button** - Properly handles navigation back to dashboard without triggering setup pipeline
-
-### Fixed
-
-- Fixed delete dialog button symmetry (removed icon from delete button for equal width)
-- Fixed folder setup redirect loop when closing setup page
-- Fixed TOTP reset back button causing redirect loop
-- Fixed TOTP input allowing non-sequential digit entry
-- Fixed theme toggle showing purple sun icon instead of warm amber
-- **Fixed deprecated `PaperProps`** - Replaced with `slotProps.paper` in all Dialog components
-
-### Technical
-
-- Added `useColorScheme` hook for proper theme mode detection
-- Added `popstate` event handlers for browser back button navigation
-- Added `setTimeout` delays for React state updates before focusing inputs
-- Replaced deprecated MUI `PaperProps` with modern `slotProps.paper` pattern
+All notable changes to the frontend are documented in this file.
 
 ---
 
-### Files Modified
+## [10-01-2026]
 
-- `frontend/src/app/[slug]/page.tsx`
-- `frontend/src/app/dashboard/page.tsx`
-- `frontend/src/app/layout.tsx`
-- `frontend/src/app/login/page.tsx`
-- `frontend/src/app/setup-link/page.tsx`
-- `frontend/src/components/ThemeToggle.tsx`
-- `frontend/src/theme.ts`
-- `frontend/src/app/favicon.ico`
+### Changed
+- **Slug Page Dropzone** - Hidden when uploading or all files successfully uploaded
+- **TOTP Error Handling** - Inline error display without page redirection
 
-### Files Added
+### Fixed
+- Fixed dropzone remaining visible during upload transition delay
 
-- `frontend/src/app/setup-folder/page.tsx`
-- `frontend/src/app/setup-totp/page.tsx` (renamed from totp-setup)
-- `frontend/public/logo-light.svg`
-- `frontend/public/logo-dark.svg`
+---
 
-### Files Deleted
+## [09-01-2026] - `13c054f`
 
-- `frontend/src/app/totp-setup/page.tsx` (renamed to setup-totp)
+### Added
+- **Landing Page Components** - Split into modular sections:
+  - `HeroSection.tsx` - Main hero with animations
+  - `FeaturesSection.tsx` - Feature highlights
+  - `TutorialSection.tsx` - Step-by-step guide
+  - `ProblemSolutionSection.tsx` - Problem/solution layout
+  - `TrustSection.tsx` - Trust indicators
+  - `FAQSection.tsx` - FAQ accordion
+  - `FooterSection.tsx` - Footer with links
+- **Animation Components**:
+  - `AnimatedSection.tsx` - Section animations
+  - `SmoothScrollProvider.tsx` - Smooth scroll behavior
+  - `TextReveal.tsx` - Text reveal animations
+
+### Changed
+- Updated `[slug]/page.tsx`, `dashboard/page.tsx`, `login/page.tsx`
+- Updated `setup-folder/page.tsx`, `setup-link/page.tsx`
+- Added `setup-totp/page.tsx`
+
+---
+
+## [08-01-2026] - `ee10e55`, `3411508`, `da7c8ef`
+
+### Changed
+- **TOTP Setup UX** - Improved with split input fields (`3411508`)
+- **Rollback and fixes** - Fixed `api.ts`, `theme.ts` issues (`ee10e55`)
+- **Merge conflict resolution** - Dashboard and Slug pages (`da7c8ef`)
+
+### Fixed
+- Renamed `setup-totp/page.tsx` → `totp-setup/page.tsx` (rollback)
+
+---
+
+## [08-01-2026] - `e274896`
+
+### Added
+- **Auth Callback Page** - `auth/google/callback/page.tsx`
+- **Auth Context** - `context/AuthContext.tsx`
+- **API Library** - `lib/api.ts` with axios configuration
+
+### Changed
+- Integrated frontend with backend
+- Fixed drive permission handling
+- Improved duplicated slug error handling
+- Updated theme configuration
+
+---
+
+## [06-01-2026] - `0775558`, `88b72a3`
+
+### Added
+- **CHANGELOG.md** - Initial changelog
+- **Custom Logos**:
+  - `logo-dark.svg` - Dark mode logo
+  - `logo-light.svg` - Light mode logo
+- **Setup Folder Page** - `setup-folder/page.tsx`
+
+### Changed
+- Renamed `totp-setup/page.tsx` → `setup-totp/page.tsx`
+- Updated favicon
+- Updated `ThemeToggle.tsx` with warm amber sun icon
+- Updated dashboard, login, layout, slug, and setup-link pages
+
+---
+
+## [03-01-2026] - `8ea828e`, `8abdea5`
+
+### Added
+- **Setup Documentation** - `setup.md`
+
+---
+
+## [16-12-2025] - `e358122`
+
+### Added
+- **Initial Frontend Application**:
+  - Next.js project setup with TypeScript
+  - Pages: `[slug]`, `dashboard`, `login`, `setup-link`, `totp-setup`
+  - Components: `SquircleLoader.tsx`, `ThemeToggle.tsx`
+  - Theme configuration: `theme.ts`
+  - Global styles: `globals.css`
+
+---
+
+## [13-12-2025] - `3c4f245`
+
+### Added
+- Initial commit with placeholder file
+
+---
+
+## Files Summary
+
+### Pages
+| File | Description |
+|------|-------------|
+| `[slug]/page.tsx` | Public upload page with TOTP verification |
+| `dashboard/page.tsx` | User dashboard with TOTP, link, and folder cards |
+| `login/page.tsx` | Google OAuth login page |
+| `setup-folder/page.tsx` | Drive folder configuration |
+| `setup-link/page.tsx` | URL slug setup |
+| `setup-totp/page.tsx` | TOTP setup with QR code |
+| `auth/google/callback/page.tsx` | OAuth callback handler |
+
+### Components
+| File | Description |
+|------|-------------|
+| `SquircleLoader.tsx` | Animated loading spinner |
+| `ThemeToggle.tsx` | Dark/light mode toggle |
+| `StyledQRCode.tsx` | Styled QR code component |
+| `AnimatedSection.tsx` | Section animation wrapper |
+| `SmoothScrollProvider.tsx` | Smooth scroll context |
+| `TextReveal.tsx` | Text reveal animation |
+| `landing/*.tsx` | Landing page section components |

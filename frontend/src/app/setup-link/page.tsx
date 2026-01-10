@@ -9,14 +9,11 @@ import {
     InputAdornment,
     IconButton,
     useTheme,
-    CircularProgress,
 } from '@mui/material';
 import {
     Link as LinkIcon,
     ArrowForward,
     Close,
-    CheckCircle,
-    Cancel,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -38,9 +35,6 @@ export default function SetupLinkPage() {
     const [isCreating, setIsCreating] = useState(false);
     const [isUpdate, setIsUpdate] = useState(false);
 
-    const [isChecking, setIsChecking] = useState(false);
-    const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
-
     const loaderColor = muiTheme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
 
     useEffect(() => {
@@ -50,37 +44,6 @@ export default function SetupLinkPage() {
             setIsUpdate(true);
         }
     }, [user]);
-
-    // Live Check with Debounce
-    useEffect(() => {
-        const checkAvailability = async () => {
-            if (!slug || slug.length < 3 || slug === user?.url_slug) {
-                setIsAvailable(null);
-                return;
-            }
-
-            setIsChecking(true);
-            try {
-                const response = await api.get(`/url/check-availability?slug=${slug}`);
-                setIsAvailable(response.data.available);
-                if (!response.data.available) {
-                    setError('This link is already taken');
-                } else {
-                    setError('');
-                }
-            } catch (err) {
-                console.error('Failed to check availability', err);
-            } finally {
-                setIsChecking(false);
-            }
-        };
-
-        const timer = setTimeout(() => {
-            checkAvailability();
-        }, 500);
-
-        return () => clearTimeout(timer);
-    }, [slug, user]);
 
     // Handle browser back button
     useEffect(() => {
@@ -99,16 +62,11 @@ export default function SetupLinkPage() {
         const value = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
         setSlug(value);
         setError('');
-        setIsAvailable(null); // Reset status while typing
     };
 
     const handleCreate = async () => {
         if (slug.length < 3) {
             setError('Link must be at least 3 characters');
-            return;
-        }
-        if (isAvailable === false) {
-            setError('This link is already taken');
             return;
         }
 
@@ -124,7 +82,6 @@ export default function SetupLinkPage() {
             // Handle 409 Conflict cleanly
             if (err.response?.status === 409) {
                 setError('This link is already taken.');
-                setIsAvailable(false);
             } else {
                 setError(err.response?.data?.detail || 'Failed to update link.');
             }
@@ -134,7 +91,6 @@ export default function SetupLinkPage() {
     };
 
     const previewUrl = `yoursite.com/${slug || 'your-link'}`;
-    const showSuccess = isAvailable === true && !isChecking && slug.length >= 3;
 
     return (
         <Box sx={{
@@ -178,7 +134,7 @@ export default function SetupLinkPage() {
                             width: { xs: 60, sm: 80 },
                             height: { xs: 60, sm: 80 },
                             borderRadius: '50%',
-                            bgcolor: 'secondary.main',
+                            bgcolor: '#5C6BC0',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -215,25 +171,13 @@ export default function SetupLinkPage() {
                         onChange={handleSlugChange}
                         placeholder="my-upload-link"
                         error={!!error}
-                        color={showSuccess ? 'success' : 'primary'}
-                        focused={showSuccess ? true : undefined}
-                        helperText={
-                            error ||
-                            (showSuccess ? <span style={{ color: muiTheme.palette.success.main, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckCircle fontSize="small" sx={{ mr: 0.5 }} /> Available</span> : 'Lowercase letters, numbers, hyphens only')
-                        }
+                        helperText={error || 'Lowercase letters, numbers, hyphens only'}
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
                                     <Typography color="text.secondary">/</Typography>
                                 </InputAdornment>
                             ),
-                            endAdornment: (
-                                <InputAdornment position="end">
-                                    {isChecking && <CircularProgress size={20} />}
-                                    {!isChecking && isAvailable === false && <Cancel color="error" />}
-                                    {!isChecking && showSuccess && <CheckCircle color="success" />}
-                                </InputAdornment>
-                            )
                         }}
                         sx={{ mb: 3 }}
                     />
@@ -244,7 +188,7 @@ export default function SetupLinkPage() {
                             size="large"
                             fullWidth
                             onClick={handleCreate}
-                            disabled={!slug || isCreating || isAvailable === false}
+                            disabled={!slug || slug.length < 3 || isCreating}
                             endIcon={isCreating ? <SquircleLoader size={20} color="white" /> : <ArrowForward />}
                             sx={{ py: 1.5 }}
                         >
