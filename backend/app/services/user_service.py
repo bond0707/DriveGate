@@ -7,6 +7,7 @@ from app.models.users import UserModel
 from app.core.enums import AuthType, DriveType
 from app.models.user_auth import UserAuthModel
 from app.models.user_drive import UserDriveModel
+from app.utils.encryption import encryption_service
 
 
 class UserService:
@@ -68,7 +69,10 @@ class UserService:
             )
 
             result = await db.execute(query)
-            return result.scalar_one_or_none()
+            encrypted_secret = result.scalar_one_or_none()
+            if encrypted_secret:
+                return encryption_service.safe_decrypt(encrypted_secret)
+            return None
         except Exception as e:
             raise Exception(f"Failed to get TOTP Secret : {e}")
     
@@ -86,7 +90,10 @@ class UserService:
                 .where(UserDriveModel.drive_type == drive_type.value)
             )
             result = await db.execute(query)
-            return result.scalar_one_or_none()
+            encrypted_secret = result.scalar_one_or_none()
+            if encrypted_secret:
+                return encryption_service.safe_decrypt(encrypted_secret)
+            return None
         except Exception as e:
             raise Exception(f"Failed to get Auth Secret : {e}")
 
@@ -110,7 +117,8 @@ class UserService:
 
             if row is None:
                 return None
-            return (row.folder_id, row.auth_secret)
+            decrypted_auth_secret = encryption_service.safe_decrypt(row.auth_secret)
+            return (row.folder_id, decrypted_auth_secret)
         except Exception as e:
             raise Exception(f"Failed to get Drive Credentials: {e}")
 
@@ -149,7 +157,7 @@ class UserService:
             user_auth = UserAuthModel(
                 user_id          = user_id,
                 auth_type        = auth_type.value,
-                auth_secret      = secret_token,
+                auth_secret      = encryption_service.encrypt(secret_token),
                 provider_user_id = provider_user_id,
             )
             db.add(user_auth)
@@ -183,7 +191,7 @@ class UserService:
                 user_id      = user_id,
                 drive_type   = drive_type.value,
                 user_auth_id = user_auth_id,
-                totp_secret  = totp_secret,
+                totp_secret  = encryption_service.encrypt(totp_secret) if totp_secret else None,
                 folder_id    = folder_id,
                 folder_name  = folder_name,
                 url_slug     = url_slug
@@ -212,7 +220,7 @@ class UserService:
                 update(UserAuthModel)
                 .where(UserAuthModel.user_id == user_id)
                 .where(UserAuthModel.auth_type == auth_type.value)
-                .values(auth_secret = refresh_token)
+                .values(auth_secret = encryption_service.encrypt(refresh_token))
                 .returning(UserAuthModel)
             )
             result = await db.execute(query)
@@ -236,7 +244,7 @@ class UserService:
                 update(UserDriveModel)
                 .where(UserDriveModel.user_id == user_id)
                 .where(UserDriveModel.drive_type == drive_type.value)
-                .values(totp_secret=totp_secret)
+                .values(totp_secret=encryption_service.encrypt(totp_secret))
                 .returning(UserDriveModel)
             )
             result = await db.execute(query)

@@ -1,6 +1,6 @@
 from typing import Optional
 from app.core.enums import DriveType
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 # Request schema when google redirects from uri
 class GoogleAuthRequest(BaseModel):
@@ -8,7 +8,7 @@ class GoogleAuthRequest(BaseModel):
     state: Optional[str] = None  # Optional parameter for security
 
 class FolderUpdateRequest(BaseModel):
-    folder_name: str
+    folder_name: str = Field(..., pattern=r"^[a-zA-Z0-9\s-]+$")
     drive_type: DriveType
 
 class FolderUpdateResponse(BaseModel):
@@ -22,8 +22,8 @@ class UserResponse(BaseModel):
     email: EmailStr
     totp_secret: Optional[str] = None
     folder_id: Optional[str] = None
-    folder_name: Optional[str] = None
-    url_slug: Optional[str] = None
+    folder_name: Optional[str] = Field(None, pattern=r"^[a-zA-Z0-9\s-]+$")
+    url_slug: Optional[str] = Field(None, pattern=r"^[a-z0-9-]+$")
 
 # Response schema for successful authentication
 class AuthResponse(BaseModel):

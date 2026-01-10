@@ -2,6 +2,7 @@ httpx
 pyotp
 asyncpg
 pydantic
+cryptography
 python-jose
 python-dotenv
 fastapi[standard]

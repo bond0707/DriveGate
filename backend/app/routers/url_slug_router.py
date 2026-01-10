@@ -6,7 +6,7 @@ from app.models.users import UserModel
 from sqlalchemy.exc import IntegrityError
 from app.database.connection import get_db
 from fastapi.exceptions import HTTPException
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.user_service import user_service
 from app.services.google_auth_service import google_auth_service
@@ -44,7 +44,7 @@ async def update_url_slug(
 # biz
 @url_slug_router.get("/check-availability", status_code=status.HTTP_200_OK)
 async def check_slug_availability(
-    slug: str,
+    slug: str = Query(..., pattern=r"^[a-z0-9-]+$"),
     db: AsyncSession = Depends(get_db),
     user: UserModel = Depends(get_current_user)
 ):

@@ -142,6 +142,7 @@ export default function PublicUploadPage() {
             setTimeout(() => inputRefs.current[index + 1]?.focus(), 0);
         }
 
+
         // Auto-submit if filled
         if (newOtp.every(d => d !== '')) {
             verifyTotp(newOtp.join(''));
@@ -165,6 +166,7 @@ export default function PublicUploadPage() {
         });
         setOtp(newOtp);
 
+
         if (newOtp.every(d => d !== '')) {
             verifyTotp(newOtp.join(''));
         }
@@ -173,6 +175,7 @@ export default function PublicUploadPage() {
     const verifyTotp = async (code: string) => {
         setIsVerifying(true);
         setVerifyError('');
+
 
         // Artificial delay for UX
         await new Promise(r => setTimeout(r, 800));
@@ -277,6 +280,11 @@ export default function PublicUploadPage() {
                 status: 'error',
                 progress: 0,
                 error: err.message || 'Upload failed'
+            setFiles(prev => prev.map((f, i) => i === fileIndex ? {
+                ...f,
+                status: 'error',
+                progress: 0,
+                error: err.message || 'Upload failed'
             } : f));
         }
     };
@@ -287,6 +295,7 @@ export default function PublicUploadPage() {
         const signal = abortControllerRef.current.signal;
 
         setIsUploading(true);
+
 
         // Filter pending files and map them to their current index
         const pendingFiles = files
@@ -317,6 +326,9 @@ export default function PublicUploadPage() {
     // Check completion
     useEffect(() => {
         if (files.length > 0 && !isUploading && files.every(f => f.status === 'success')) {
+            // Optional: Auto-advance to success screen after short delay
+            const timer = setTimeout(() => setStep('success'), 1000);
+            return () => clearTimeout(timer);
             // Optional: Auto-advance to success screen after short delay
             const timer = setTimeout(() => setStep('success'), 1000);
             return () => clearTimeout(timer);
@@ -686,6 +698,7 @@ export default function PublicUploadPage() {
                             <Typography color="text.secondary" sx={{ mb: 4 }}>
                                 {files.length} file{files.length !== 1 ? 's' : ''} uploaded successfully.
                             </Typography>
+
 
                             <Button variant="outlined" onClick={() => {
                                 setStep('totp');

@@ -58,7 +58,7 @@ api.interceptors.response.use(
             if (storedToken && requestAuth === `Bearer ${storedToken}`) {
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
-                window.location.href = '/';
+                window.location.reload();
             }
         }
         return Promise.reject(error);

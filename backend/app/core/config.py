@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int
 
+    ENCRYPTION_KEY: str
+
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str
@@ -15,7 +17,7 @@ class Settings(BaseSettings):
     GOOGLE_DRIVE_UPLOAD_REQUEST_URL: str
 
     APP_NAME: str
-    APP_LOGO: str
+    # APP_LOGO: str or 'NA'
     APP_VERSION: str
 
     model_config = SettingsConfigDict(

@@ -1,16 +1,17 @@
-from pydantic import BaseModel
+from typing import Optional
+from pydantic import BaseModel, Field
 
 class URLSlugUpdateRequest(BaseModel):
-    url_slug: str
+    url_slug: str = Field(..., pattern=r"^[a-z0-9-]+$")
 
 class UpdateURLSlugResponse(BaseModel):
     url_slug: str
 
 class FileMetadataRequest(BaseModel):
-    file_name: str
-    file_size: int
+    file_name: str = Field(..., min_length=1, max_length=255)
+    file_size: int = Field(..., gt=0)
     mime_type: str
-    md5_checksum: str
+    md5_checksum: Optional[str] = Field(None, pattern=r"^[a-fA-F0-9]{32}$")
 
 class UploadURLResponse(BaseModel):
     upload_url: str
