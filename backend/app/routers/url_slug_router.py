@@ -14,6 +14,19 @@ from app.utils.dependencies import get_current_user, get_upload_token_payload
 
 url_slug_router = APIRouter()
 
+@url_slug_router.get("/validate-slug", status_code=status.HTTP_200_OK)
+async def verify_url_slug(
+    url_slug: str, 
+    db: AsyncSession = Depends(get_db)
+):
+    if await user_service.get_totp_secret_by_url_slug(db, url_slug) is None:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail      = "Url slug is invalid, redirect to marketing page (to-do)!"
+        )
+    else:
+        return {"message": "Url slug is valid!"}
+
 @url_slug_router.patch("/update", response_model=UpdateURLSlugResponse, status_code=status.HTTP_200_OK)
 async def update_url_slug(
     request: URLSlugUpdateRequest,
@@ -99,7 +112,6 @@ async def get_upload_uri(
         "Authorization": f"Bearer {google_access_token}",
         "Content-Type": "application/json",
         "X-Upload-Content-Type": file_metadata.mime_type,
-        "X-Upload-Content-Length": str(file_metadata.file_size),
         # CRITICAL: Origin header required for Google to allow CORS on the PUT request from browser
         "Origin": "http://localhost:3000" 
     }

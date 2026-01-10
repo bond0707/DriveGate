@@ -1,3 +1,11 @@
+## Overview
+
+This router handles authentication, Google OAuth login, JWT issuance, user profile access, account deletion, Google Drive folder management, and token validation.
+
+All protected endpoints require a valid **JWT access token** issued by this service.
+
+---
+
 ### **Test Case 1: Get Google Login URL**
 
 This is the first step to initiate the OAuth 2.0 flow.
@@ -12,6 +20,8 @@ This is the first step to initiate the OAuth 2.0 flow.
     "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=http://localhost:8000/auth/google/callback&response_type=code&scope=openid+email+profile+https://www.googleapis.com/auth/drive.file&access_type=offline&prompt=consent"
   }
   ```
+
+---
 
 ### **Test Case 2: Handle OAuth Callback**
 
@@ -56,6 +66,8 @@ This endpoint exchanges the authorization code from Google for tokens, creates/u
   * **`access_token`**: A JWT token your frontend must save and use for subsequent requests.
   * **`drive_folder_id`**: The ID of the "TOTP_UPLOADER" folder created in the user's Google Drive.
 
+---
+
 ### **Test Case 3: Get Current User (Protected Endpoint)**
 
 This protected endpoint validates the JWT token and returns the user's profile information.
@@ -84,6 +96,8 @@ This protected endpoint validates the JWT token and returns the user's profile i
   }
   ```
 
+---
+
 ### **Test Case 4: Validate Token**
 
 This endpoint quickly checks if a provided JWT token is valid without querying the full user from the database.
@@ -108,7 +122,40 @@ This endpoint quickly checks if a provided JWT token is valid without querying t
   }
   ```
 
-### **Test Case 5: Update Drive Folder**
+---
+
+### Test Case 5: Delete Current User (Protected Endpoint)
+
+Deletes the authenticated user and all associated records.
+
+* **HTTP Method:**`DELETE`
+* **Endpoint:**`/auth/me`
+* **Authentication:**  Required
+
+### Headers
+
+```http
+Authorization: Bearer 
+```
+
+### Successful Response (200)
+
+**json**
+
+```json
+{
+  "username": "Tony Stark"
+}
+```
+
+### Error Responses
+
+* **401 Unauthorized** – Missing or invalid JWT
+* **500 Internal Server Error** – Deletion failure
+
+---
+
+### **Test Case 6: Create/Update Drive Folder**
 
 This protected endpoint allows the user to create a new Google Drive folder in their drive and update their Drive folder settings. It is required to run `Test Case 2` before testing this endpoint.
 
@@ -158,6 +205,37 @@ This protected endpoint allows the user to create a new Google Drive folder in t
     ]
   }
   ```
+
+---
+
+### Test Case 7: Validate URL Slug (Public Endpoint)
+
+Validates if a URL slug exists and is associated with a user.
+
+* **HTTP Method:**`GET`
+* **Endpoint:**`/auth/validate-slug`
+* **Authentication:**  Not required
+
+### Query Parameters
+
+```html
+url_slug=<URL_SLUG>
+```
+
+### Successful Response (200)
+
+```json
+{
+  "message": "Url slug is valid!"
+}
+```
+
+### Error Responses
+
+* **404 Not Found** – URL slug is invalid or not found
+* **500 Internal Server Error** – Database error
+
+---
 
 ### **Test Flow and Notes**
 

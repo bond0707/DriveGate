@@ -19,3 +19,7 @@ class UserModel(Base):
         unique=True,
         nullable=False,
     )
+    picture_url: Mapped[str] = mapped_column(
+        String(255),
+        nullable=True
+    )

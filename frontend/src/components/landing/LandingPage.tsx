@@ -1,7 +1,9 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { Box, Container, Typography, Button, useColorScheme } from '@mui/material';
+import { Box, Container, Typography, Button, useColorScheme, Paper, IconButton } from '@mui/material';
 import { useScroll, useMotionValueEvent, motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Close, LinkOff } from '@mui/icons-material';
 import Image from 'next/image';
 import ThemeToggle from '../ThemeToggle';
 import {
@@ -17,11 +19,26 @@ import type { TutorialSectionHandle } from './sections';
 
 export default function LandingPage() {
     const { mode } = useColorScheme();
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const [scrolled, setScrolled] = useState(false);
     const [heroButtonVisible, setHeroButtonVisible] = useState(true);
     const [firstToggleVisible, setFirstToggleVisible] = useState(true);
     const [secondToggleVisible, setSecondToggleVisible] = useState(false);
+    const [showInvalidLinkMessage, setShowInvalidLinkMessage] = useState(false);
     const tutorialRef = useRef<TutorialSectionHandle>(null);
+
+    // Check for invalid_link query parameter
+    useEffect(() => {
+        if (searchParams.get('invalid_link') === 'true') {
+            setShowInvalidLinkMessage(true);
+            // Clean URL without reloading the page
+            router.replace('/', { scroll: false });
+            // Auto-dismiss after 8 seconds
+            const timer = setTimeout(() => setShowInvalidLinkMessage(false), 8000);
+            return () => clearTimeout(timer);
+        }
+    }, [searchParams, router]);
 
     useMotionValueEvent(useScroll().scrollY, "change", (latest) => {
         setScrolled(latest > 50);
@@ -196,6 +213,66 @@ export default function LandingPage() {
             </main>
 
             <FooterSection />
+
+            {/* Invalid Link Notification */}
+            <AnimatePresence>
+                {showInvalidLinkMessage && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        style={{
+                            position: 'fixed',
+                            bottom: 24,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 1100,
+                            width: 'calc(100% - 32px)',
+                            maxWidth: 400,
+                        }}
+                    >
+                        <Paper
+                            elevation={8}
+                            sx={{
+                                p: 2,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                borderRadius: 3,
+                                bgcolor: 'background.paper',
+                                border: '1px solid',
+                                borderColor: 'divider',
+                            }}
+                        >
+                            <Box sx={{
+                                p: 1,
+                                borderRadius: 2,
+                                bgcolor: '#FFF3E0',
+                                color: '#E65100',
+                                display: 'flex',
+                            }}>
+                                <LinkOff />
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="subtitle2" fontWeight={600}>
+                                    Link not found
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    That upload link doesn't exist. Please check the URL and try again.
+                                </Typography>
+                            </Box>
+                            <IconButton
+                                size="small"
+                                onClick={() => setShowInvalidLinkMessage(false)}
+                                sx={{ color: 'text.secondary' }}
+                            >
+                                <Close fontSize="small" />
+                            </IconButton>
+                        </Paper>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </Box>
     );
 }

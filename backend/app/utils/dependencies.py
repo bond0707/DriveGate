@@ -80,38 +80,3 @@ async def get_current_user(
         )
     return user
 
-# For @Dhruvil, I'll remove this if it remains useless. 
-async def get_optional_user(
-    db: AsyncSession = Depends(get_db),
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
-):
-    if credentials is None:
-        return None    
-    try:
-        token = credentials.credentials
-        payload = jwt_manager.verify_token(token)
-    
-        if not payload:
-            return None
-        
-        user_id = payload.get("user_id")
-        if not user_id:
-            return None
-        
-        user = await user_service.get_user_by_id(db, user_id)
-        return user
-
-    except Exception:
-        # If anything fails, return None (not authenticated)
-        return None
-
-# def require_admin(user = Depends(get_current_user)):
-#     # Check if user has admin attribute 
-#     (Nigga need to add this to UserModel) 
-#     (@Dhruvil Nah, There is no admin, we're making it for ourselves, not selling it to anyone. we can handle without admin portal)(will remove this part in next commit.)
-#     if not hasattr(user, 'is_admin') or not user.is_admin:
-#         raise HTTPException(
-#             status_code=status.HTTP_403_FORBIDDEN,
-#             detail="Insufficient permissions"
-#         )
-#     return user

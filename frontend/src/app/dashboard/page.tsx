@@ -40,6 +40,8 @@ import {
     DeleteForever,
     Favorite,
     QrCode2,
+    OpenInNew,
+    Close,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -71,12 +73,6 @@ export default function DashboardPage() {
     const [totpCode, setTotpCode] = useState<string | null>(null);
     const [totpProgress, setTotpProgress] = useState(100);
     const [totpLoading, setTotpLoading] = useState(true);
-
-    // Folder Update State
-    const [openFolderDialog, setOpenFolderDialog] = useState(false);
-    const [folderName, setFolderName] = useState('');
-    const [isUpdatingFolder, setIsUpdatingFolder] = useState(false);
-    const [folderError, setFolderError] = useState('');
 
     // Delete Account State
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -130,7 +126,6 @@ export default function DashboardPage() {
                             drive_type: 'GOOGLE_DRIVE'
                         });
                         await checkAuth(); // Refresh user state
-                        setFolderName('DriveGate Uploads');
                     } catch (e) {
                         console.error("Failed to set default folder", e);
                     }
@@ -139,9 +134,6 @@ export default function DashboardPage() {
                     router.push('/setup-folder');
                     return;
                 }
-            } else {
-                // If folder exists, sync local state
-                setFolderName(user.folder_name);
             }
 
             // --- STEP 3: UPLOAD LINK (SLUG) ---
@@ -264,30 +256,9 @@ export default function DashboardPage() {
         router.push('/setup-totp');
     };
 
-    const handleUpdateFolder = async () => {
-        if (!folderName.trim()) {
-            setFolderError('Folder name cannot be empty');
-            return;
-        }
-
-        setIsUpdatingFolder(true);
-        setFolderError('');
-
-        try {
-            await api.post('/auth/me/update-drive-folder', {
-                folder_name: folderName,
-                drive_type: 'GOOGLE_DRIVE'
-            });
-            await checkAuth(); // Refresh user context
-            setOpenFolderDialog(false);
-            setSnackbarMessage('Folder updated successfully');
-            setSnackbarOpen(true);
-        } catch (err: any) {
-            console.error('Failed to update folder:', err);
-            setFolderError(err.response?.data?.detail || 'Failed to update folder');
-        } finally {
-            setIsUpdatingFolder(false);
-        }
+    const handleUpdateFolder = () => {
+        localStorage.setItem('folder_mode', 'update');
+        router.push('/setup-folder');
     };
 
     // Loading State - wait for both auth AND setup pipeline to complete
@@ -631,15 +602,36 @@ export default function DashboardPage() {
                                 {user.folder_name || 'My Drive (Root)'}
                             </Box>
                             <Box sx={{ display: 'flex', bgcolor: 'action.hover', borderRadius: 100, p: 0.5, gap: 0.5 }}>
-                                <Button
-                                    size="small"
-                                    startIcon={<Edit sx={{ fontSize: { xs: 16, sm: 18 } }} />}
-                                    onClick={() => setOpenFolderDialog(true)}
-                                    fullWidth
-                                    sx={{ borderRadius: 100, py: 0.75, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                                >
-                                    Change Folder
-                                </Button>
+                                <Tooltip title="Open folder in Google Drive" arrow>
+                                    <Button
+                                        size="small"
+                                        startIcon={<OpenInNew sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+                                        onClick={() => {
+                                            // Open folder directly in Google Drive using folder ID
+                                            if (user.folder_id) {
+                                                const driveUrl = `https://drive.google.com/drive/folders/${user.folder_id}?authuser=${encodeURIComponent(user.email)}`;
+                                                window.open(driveUrl, '_blank');
+                                            } else {
+                                                // Fallback to search if no folder ID
+                                                const folderName = user.folder_name || 'DriveGate Uploads';
+                                                window.open(`https://drive.google.com/drive/search?q=${encodeURIComponent(folderName)}`, '_blank');
+                                            }
+                                        }}
+                                        sx={{ flex: 1, borderRadius: 100, py: 0.75, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                                    >
+                                        Open
+                                    </Button>
+                                </Tooltip>
+                                <Tooltip title="Change upload folder name" arrow>
+                                    <Button
+                                        size="small"
+                                        startIcon={<Edit sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+                                        onClick={handleUpdateFolder}
+                                        sx={{ flex: 1, borderRadius: 100, py: 0.75, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                                    >
+                                        Change
+                                    </Button>
+                                </Tooltip>
                             </Box>
                         </MotionPaper>
                     </motion.div>
@@ -681,52 +673,6 @@ export default function DashboardPage() {
                     )
                 }
             </Container >
-
-            {/* Update Folder Dialog */}
-            < Dialog
-                open={openFolderDialog}
-                onClose={() => !isUpdatingFolder && setOpenFolderDialog(false)
-                }
-                fullWidth
-                maxWidth="xs"
-                slotProps={{
-                    paper: { sx: { borderRadius: 3 } }
-                }}
-            >
-                <DialogTitle>Update Drive Folder</DialogTitle>
-                <DialogContent>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                        Enter the name of the folder where uploads should be saved.
-                        This will create a new folder in your Google Drive if it doesn't exist.
-                    </Typography>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        label="Folder Name"
-                        fullWidth
-                        variant="outlined"
-                        value={folderName}
-                        onChange={(e) => setFolderName(e.target.value)}
-                        disabled={isUpdatingFolder}
-                        error={!!folderError}
-                        helperText={folderError}
-                    />
-                </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setOpenFolderDialog(false)} disabled={isUpdatingFolder} sx={{ borderRadius: 2 }}>
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={handleUpdateFolder}
-                        variant="contained"
-                        disabled={isUpdatingFolder}
-                        startIcon={isUpdatingFolder ? <CircularProgress size={20} color="inherit" /> : <Save />}
-                        sx={{ borderRadius: 2 }}
-                    >
-                        {isUpdatingFolder ? 'Saving...' : 'Save'}
-                    </Button>
-                </DialogActions>
-            </Dialog >
 
             {/* Delete Account Dialog */}
             < Dialog

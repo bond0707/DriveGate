@@ -3,6 +3,7 @@ from app.database.connection import get_db
 from app.utils.jwt_manager import jwt_manager
 from app.core.enums import AuthType, DriveType
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.utils.encryption import encryption_util
 from app.services.user_service import user_service
 from app.utils.dependencies import get_current_user
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,6 +12,7 @@ from app.schemas.user import (
     AuthResponse, 
     UserResponse, 
     GoogleAuthRequest, 
+    DeleteUserResponse,
     FolderUpdateRequest,
     FolderUpdateResponse,
 )
@@ -60,6 +62,7 @@ async def google_callback(
         # Extract fields from user_info
         email = user_info.get('email')
         google_uuid = user_info.get('sub')
+        picture_url = user_info.get('picture')
         username = user_info.get('name', email.split('@')[0])
 
         if not google_uuid or not email:
@@ -74,8 +77,9 @@ async def google_callback(
         if user is None:
             # Create user in UserModel
             user_data = {
-                'email'   : email,
-                'username': username,
+                'email'       : email,
+                'username'    : username,
+                'picture_url' : picture_url
             }
     
             try:
@@ -104,6 +108,7 @@ async def google_callback(
                 print(f"Warning: Failed to create user and link google drive: {fe}")
         else:
             # Existing user - update refresh token if we got a new one
+            user = await user_service.update_picture_url(db, user.id, picture_url)
             if refresh_token:
                 user_auth = await user_service.update_refresh_token(
                     db            = db,
@@ -128,7 +133,8 @@ async def google_callback(
             id          = user.id,
             username    = user.username,
             email       = user.email,
-            totp_secret = user_drive.totp_secret,
+            picture_url = user.picture_url,
+            totp_secret = encryption_util.safe_decrypt(user_drive.totp_secret) if user_drive.totp_secret else None,
             folder_id   = user_drive.folder_id,
             folder_name = user_drive.folder_name,
             url_slug    = user_drive.url_slug,
@@ -162,11 +168,26 @@ async def get_me(
         id          = user.id,
         username    = user.username,
         email       = user.email,
-        totp_secret = user_drive.totp_secret,
+        picture_url = user.picture_url,
+        totp_secret = encryption_util.safe_decrypt(user_drive.totp_secret) if user_drive.totp_secret else None,
         folder_id   = user_drive.folder_id,
         folder_name = user_drive.folder_name,
         url_slug    = user_drive.url_slug,
     )
+
+@auth_router.delete("/me", response_model=DeleteUserResponse, status_code=status.HTTP_200_OK)
+async def delete_current_user(
+    user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        username = await user_service.delete_user(db, user.id)
+        return {"username": username}
+    except Exception as e:
+        raise HTTPException(
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail      = f"Could not delete user : {str(e)}"
+        )
 
 @auth_router.post("/me/update-drive-folder", response_model=FolderUpdateResponse, status_code=status.HTTP_200_OK)
 async def update_drive_folder(

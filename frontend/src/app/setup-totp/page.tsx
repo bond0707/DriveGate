@@ -226,7 +226,7 @@ function TOTPSetupContent() {
         }
     }, [isComplete]);
 
-    if (isLoading) {
+    if (isLoading || (!error && (!secret || !provisioningUri))) {
         return (
             <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
                 <SquircleLoader size={50} color={loaderColor} />

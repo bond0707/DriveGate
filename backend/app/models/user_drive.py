@@ -3,7 +3,7 @@ from app.database.connection import Base
 from app.database.enums import drive_type_enum
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import (
-    Text, 
+    TEXT, 
     String, 
     BigInteger, 
     ForeignKey,
@@ -26,8 +26,7 @@ class UserDriveModel(Base):
         nullable=False
     )
     totp_secret: Mapped[str] = mapped_column(
-        Text, 
-        unique=True,
+        TEXT,
         nullable=True
     )
     folder_id: Mapped[str] = mapped_column(

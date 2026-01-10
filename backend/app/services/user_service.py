@@ -1,3 +1,4 @@
+from dns.e164 import query
 from typing import Optional, Tuple
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, update, delete
@@ -7,7 +8,7 @@ from app.models.users import UserModel
 from app.core.enums import AuthType, DriveType
 from app.models.user_auth import UserAuthModel
 from app.models.user_drive import UserDriveModel
-from app.utils.encryption import encryption_service
+from app.utils.encryption import encryption_util
 
 
 class UserService:
@@ -35,6 +36,27 @@ class UserService:
             return result.scalar_one_or_none()
         except Exception as e:
             raise Exception(f"Failed to get the user by E-mail : {e}")
+
+    async def get_totp_secret_from_user_id_drive_type(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        drive_type: DriveType
+    ) -> Optional[str]:
+        """Gets the TOTP secret for the given drive type of the user."""
+        try:
+            query = (
+                select(UserDriveModel.totp_secret)
+                .where(UserDriveModel.user_id == user_id)
+                .where(UserDriveModel.drive_type == drive_type.value)
+            )
+            result = await db.execute(query)
+            encrypted_secret = result.scalar_one_or_none()
+            if encrypted_secret:
+                return encryption_util.safe_decrypt(encrypted_secret)
+            return None
+        except Exception as e:
+            raise Exception(f"Failed to get totp secret : {e}")
 
     async def get_user_drive(
         self,
@@ -71,7 +93,7 @@ class UserService:
             result = await db.execute(query)
             encrypted_secret = result.scalar_one_or_none()
             if encrypted_secret:
-                return encryption_service.safe_decrypt(encrypted_secret)
+                return encryption_util.safe_decrypt(encrypted_secret)
             return None
         except Exception as e:
             raise Exception(f"Failed to get TOTP Secret : {e}")
@@ -81,7 +103,7 @@ class UserService:
         db: AsyncSession,
         user_id: int,
         drive_type: DriveType
-    ):
+    ) -> Optional[str]:
         try:
             query = (
                 select(UserAuthModel.auth_secret)
@@ -92,7 +114,7 @@ class UserService:
             result = await db.execute(query)
             encrypted_secret = result.scalar_one_or_none()
             if encrypted_secret:
-                return encryption_service.safe_decrypt(encrypted_secret)
+                return encryption_util.safe_decrypt(encrypted_secret)
             return None
         except Exception as e:
             raise Exception(f"Failed to get Auth Secret : {e}")
@@ -117,7 +139,7 @@ class UserService:
 
             if row is None:
                 return None
-            decrypted_auth_secret = encryption_service.safe_decrypt(row.auth_secret)
+            decrypted_auth_secret = encryption_util.safe_decrypt(row.auth_secret)
             return (row.folder_id, decrypted_auth_secret)
         except Exception as e:
             raise Exception(f"Failed to get Drive Credentials: {e}")
@@ -157,7 +179,7 @@ class UserService:
             user_auth = UserAuthModel(
                 user_id          = user_id,
                 auth_type        = auth_type.value,
-                auth_secret      = encryption_service.encrypt(secret_token),
+                auth_secret      = encryption_util.encrypt(secret_token),
                 provider_user_id = provider_user_id,
             )
             db.add(user_auth)
@@ -191,7 +213,7 @@ class UserService:
                 user_id      = user_id,
                 drive_type   = drive_type.value,
                 user_auth_id = user_auth_id,
-                totp_secret  = encryption_service.encrypt(totp_secret) if totp_secret else None,
+                totp_secret  = encryption_util.encrypt(totp_secret) if totp_secret else None,
                 folder_id    = folder_id,
                 folder_name  = folder_name,
                 url_slug     = url_slug
@@ -207,6 +229,27 @@ class UserService:
             await db.rollback()
             raise Exception(f"Failed to create user drive: {str(e)}")
 
+    async def update_picture_url(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        picture_url: str
+    ) -> Optional[UserModel]:
+        try:
+            query = (
+                update(UserModel)
+                .where(UserModel.id == user_id)
+                .values(picture_url = picture_url)
+                .returning(UserModel)
+            )
+            result = await db.execute(query)
+            user = result.scalar_one_or_none()
+            await db.commit()
+            return user
+        except Exception as e:
+            await db.rollback()
+            raise Exception(f"Failed to update picture url : {e}")
+
     async def update_refresh_token(
         self,
         db: AsyncSession,
@@ -220,7 +263,7 @@ class UserService:
                 update(UserAuthModel)
                 .where(UserAuthModel.user_id == user_id)
                 .where(UserAuthModel.auth_type == auth_type.value)
-                .values(auth_secret = encryption_service.encrypt(refresh_token))
+                .values(auth_secret = encryption_util.encrypt(refresh_token))
                 .returning(UserAuthModel)
             )
             result = await db.execute(query)
@@ -244,7 +287,7 @@ class UserService:
                 update(UserDriveModel)
                 .where(UserDriveModel.user_id == user_id)
                 .where(UserDriveModel.drive_type == drive_type.value)
-                .values(totp_secret=encryption_service.encrypt(totp_secret))
+                .values(totp_secret=encryption_util.encrypt(totp_secret))
                 .returning(UserDriveModel)
             )
             result = await db.execute(query)
@@ -262,7 +305,7 @@ class UserService:
         drive_type: DriveType,
         folder_id: str,
         folder_name: str,
-    ):
+    ) -> Optional[UserDriveModel]:
         try:
             query = (
                 update(UserDriveModel)
@@ -316,17 +359,17 @@ class UserService:
         except Exception as e:
             raise Exception(f"Failed to check slug availability: {e}")
     
-    async def delete_user(db: AsyncSession, user_id: int) -> Optional[UserModel]:
+    async def delete_user(self, db: AsyncSession, user_id: int) -> Optional[str]:
         try:
             query = (
                 delete(UserModel)
                 .where(UserModel.id == user_id)
-                .returning(UserModel)
+                .returning(UserModel.username)
             )
             result = await db.execute(query)
-            user = result.scalar_one_or_none()
+            username = result.scalar_one_or_none()
             await db.commit()
-            return user
+            return username
         except Exception as e:
             await db.rollback()
             raise Exception(f"Failed to delete user with id : {user_id}")

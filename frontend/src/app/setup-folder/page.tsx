@@ -41,13 +41,11 @@ export default function SetupFolderPage() {
         const isUpdateMode = mode === 'update';
         setIsUpdate(isUpdateMode);
 
-        if (isUpdateMode) {
-            const existingFolder = localStorage.getItem('folder_name');
-            if (existingFolder) {
-                setFolderName(existingFolder);
-            }
+        // Pre-fill with current folder name from user context
+        if (user?.folder_name) {
+            setFolderName(user.folder_name);
         }
-    }, []);
+    }, [user]);
 
     // Handle browser back button
     useEffect(() => {
@@ -79,6 +77,12 @@ export default function SetupFolderPage() {
         }
         if (folderName.length > 50) {
             setError('Folder name must be 50 characters or less');
+            return;
+        }
+
+        // Check if name actually changed (only for updates)
+        if (isUpdate && folderName.trim() === user?.folder_name) {
+            setError("That's already your current folder name");
             return;
         }
 

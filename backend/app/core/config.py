@@ -17,7 +17,6 @@ class Settings(BaseSettings):
     GOOGLE_DRIVE_UPLOAD_REQUEST_URL: str
 
     APP_NAME: str
-    # APP_LOGO: str or 'NA'
     APP_VERSION: str
 
     model_config = SettingsConfigDict(

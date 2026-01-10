@@ -1,130 +1,179 @@
 # CHANGELOG
 
-This release represents a major database schema refactor, SSL configuration improvements, and optimized dependency management.
-
-This commit is an update on main after Kirtan's commit `e459938`
+All notable changes to the backend are documented in this file.
 
 ---
 
-## New Files Added
+## [10-01-2026]
 
-- `app/core/enums.py`
-- `app/models/user_drive.py`
-- `app/models/user_auth.py`
-- `requirements.in`
+### Changed
 
----
-
-## Universal Changes
-
-- Optimized imports in `main.py` and models directory for better performance.
-- Changed database schema to normalize user data into separate tables to make it scalable.
-- Implemented explicit SSL configuration for database connections.
-- Created `requirements.in` and compiled `requirements.txt` for optimized dependency management.
+#### Database Schema
+- **`user_drive.totp_secret`** - Changed from `CHAR(32)` to `TEXT` for encrypted TOTP secrets
+- **`user_drive.totp_secret`** - Removed `unique=True` constraint
 
 ---
 
-## Core Configuration
+## [09-01-2026] - `13c054f`, `5e56c2b`
 
-### app/core/config.py
-
-- Added new configuration variable:
-  - `DB_SERVICE_CA_PATH`
-- Removed duplicate `model_config` setting.
-
-### app/core/enums.py
-
-- Added two enumerations:
-  - `AuthType` (currently with one value: `GOOGLE`)
-  - `DriveType` (currently with one value: `GOOGLE_DRIVE`)
+### Changed
+- Updated `.env.example` configuration
+- Modified `totp_router.py` and `totp_service.py`
+- Fixed `url_slug_router.py` for UI compatibility
 
 ---
 
-## Database Models
+## [08-01-2026] - `ee10e55`, `e274896`
 
-### app/models/users.py
-
-- Removed fields which have migrated to new normalized tables.
-
-### app/models/user_drive.py
-
-- Added new model for storing totp credentials and folder information.
-
-### app/models/user_auth.py
-
-- Added new model for storing authentication methods (Google OAuth, Github etc.).
+### Changed
+- **Auth Router** - Fixed drive permission handling
+- **User Service** - Improved duplicated slug error handling
+- **URL Slug Router** - Enhanced validation
+- Updated `main.py` configuration
 
 ---
 
-## Routes
+## [03-01-2026] - `6c392a5`
 
-### app/routers/auth_router.py
+### Added
+- **Enums**:
+  - `app/core/enums.py` - `AuthType`, `DriveType` enumerations
+  - `app/database/enums.py` - SQLAlchemy enum types
+- **Normalized Models**:
+  - `app/models/user_auth.py` - Authentication methods (OAuth)
+  - `app/models/user_drive.py` - Drive credentials and folder info
+  - `app/models/users.py` - Core user data
+- **Dependency Management**:
+  - `requirements.in` - Source dependencies
 
-- Modified `google_callback()` method to no longer automatically create URL slugs and Drive folders (allowing null values in new schema).
-- Added new `update_drive_folder()` endpoint to create Drive folder and update database records.
+### Changed
+- **Database Connection** - Explicit SSL with CA certificate
+- **Config** - Added `DB_SERVICE_CA_PATH`
+- **Auth Router** - Separated folder creation from OAuth callback
+- **User Service** - Complete rewrite for normalized schema
+- **Google Auth Service** - Parameterized folder name creation
+- **Schemas** - Added `FolderUpdateRequest`, `FolderUpdateResponse`
 
----
+### Renamed
+- `jwt_handler.py` → `jwt_manager.py`
 
-## Schemas
-
-### app/schemas/user.py
-
-- Removed `SQLAlchemyConvertible` base class (unused).
-- Added new request/response schemas:
-  - `FolderUpdateRequest`
-  - `FolderUpdateResponse`
-- Modified `UserResponse` schema to replace boolean flags with new model fields.
-
----
-
-## Services
-
-### app/services/google_auth_service.py
-
-- Modified `create_drive_folder()` to accept folder names as parameters instead of using hardcoded names.
-
-### app/services/user_service.py
-
-- Completely rewritten to handle relationships between `users`, `user_drive`, and `user_auth` tables.
+### Removed
+- `app/models/UserModel.py` (replaced by normalized models)
 
 ---
 
-## Utilities
+## [29-12-2025] - `8e5309b`
 
-### app/utils/jwt_handler.py → app/utils/jwt_manager.py
+### Added
+- **`.env.example`** - Environment variable template
+- **`CHANGELOG.md`** - Initial changelog
+- **Schemas**:
+  - `drive.py` - Drive-related schemas
+  - `generic.py` - Generic response schemas
+  - `totp.py` - TOTP request/response schemas
 
-- Renamed file to match class name for consistency.
+### Changed
+- Standardized file naming (PascalCase → snake_case):
+  - `Auth_Router.py` → `auth_router.py`
+  - `User.py` → `user.py`
+- Updated all routers, services, and utilities
+- Enhanced TOTP service with validation
 
----
-
-## Database Connection
-
-### app/database/connection.py
-
-- Replaced implicit server-side SSL with explicit SSL configuration using certificate authority file.
-
----
-
-## Version Control
-
-### .gitignore
-
-- Added `ca.pem` to ignore SSL certificate files.
+### Removed
+- Old `changelog.md` (replaced with `CHANGELOG.md`)
 
 ---
 
-## Documentation
+## [26-12-2025] - `baf6803`
 
-### .env.example
+### Added
+- **URL Slug Router** - `url_slug_router.py` for public upload URLs
+- **Test Documentation**:
+  - `testcases/totp_router.md`
+  - `testcases/url_slug_router.md`
+- **Initial changelog** - `changelog.md`
 
-- Cleaned up formatting by removing unnecessary inverted quotes.
-- Added new environment variable:
-  - `DB_SERVICE_CA_PATH`
+### Changed
+- Enhanced TOTP service with verification logic
+- Updated auth router and services
+- Organized testcases into directory
 
-### Testcases
+---
 
-* Updated testcases/auth_router.md to include the new `create_drive_folder()` method.
+## [25-12-2025] - `d2090e2`
 
-### README.md
+### Added
+- **TOTP Router** - `totp_router.py` for 2FA setup and verification
+- **TOTP Service** - `totp_service.py` with OTPAuth integration
 
-- Updated with new authentication and Drive setup flows.
+### Changed
+- Added TOTP secret storage to user model
+- Enhanced JWT handler with token validation
+- Updated dependencies configuration
+
+---
+
+## [23-12-2025] - `3975cb9`, `8dfd18b`
+
+### Added
+- **Auth Router** - `Auth_Router.py` with Google OAuth flow
+- **User Service** - `user_service.py` for user CRUD operations
+- **Dependencies** - `dependencies.py` for route dependencies
+- **Test Documentation** - `testCases.md`
+
+---
+
+## [23-12-2025] - `2f748a4`
+
+### Added
+- **Schemas** - `User.py` for user request/response models
+- **Google Auth Service** - OAuth and Drive API integration
+- **JWT Handler** - Token creation and validation utilities
+
+---
+
+## [13-12-2025] - `3c4f245`
+
+### Added
+- **Initial Backend Structure**:
+  - `app/core/config.py` - Configuration management
+  - `app/database/connection.py` - SQLAlchemy setup
+  - `app/models/UserModel.py` - Initial user model
+  - `main.py` - FastAPI application entry point
+  - `requirements.txt` - Python dependencies
+
+---
+
+## Architecture Overview
+
+```
+backend/
+├── app/
+│   ├── core/
+│   │   ├── config.py      # Environment configuration
+│   │   └── enums.py       # AuthType, DriveType enums
+│   ├── database/
+│   │   ├── connection.py  # SQLAlchemy engine & session
+│   │   └── enums.py       # Database enum types
+│   ├── models/
+│   │   ├── users.py       # UserModel (core user data)
+│   │   ├── user_auth.py   # UserAuthModel (OAuth)
+│   │   └── user_drive.py  # UserDriveModel (TOTP, folder)
+│   ├── routers/
+│   │   ├── auth_router.py      # Google OAuth endpoints
+│   │   ├── totp_router.py      # TOTP setup/verify
+│   │   └── url_slug_router.py  # Public upload URLs
+│   ├── schemas/
+│   │   ├── user.py   # User schemas
+│   │   ├── totp.py   # TOTP schemas
+│   │   └── drive.py  # Drive schemas
+│   ├── services/
+│   │   ├── google_auth_service.py  # OAuth & Drive API
+│   │   ├── totp_service.py         # TOTP operations
+│   │   └── user_service.py         # User CRUD
+│   └── utils/
+│       ├── jwt_manager.py   # JWT handling
+│       └── dependencies.py  # Route dependencies
+├── main.py             # FastAPI app
+└── requirements.txt    # Dependencies
+```

@@ -42,14 +42,10 @@ A web app that lets users upload data to their own google drives without logging
 
 ## Future Updates
 
-* [X] optimize db queries.
 * [ ] add actual user CRUD.
 * [ ] add multiple accounts from same providers functionality.
-* [X] add inserting, updating url-slug functionality.
-* [X] add folder renaming functionality.
-* [X] add image (brand logo) to provisioning URI generator.
-* [X] use proper branding in google oauth consent screen.
-* [X] Add a delete user functionality in the frontend.
-* [X] Rename "jwt_handler.py" to "jwt_manager.py" for consistency.
-* [ ] Ask dhruvil about why he kept `auto_error=False` and not the default true value. (dependencies.py)
 * [ ] Encrypt refresh tokens before storing in db `MAXIMUM PRIORITY`
+
+## Bugs To Fix
+
+* [ ] If a user goes to their upload url, opens another tab, changes their upload url, and then enters the totp in the tab with the old url, it shows `Database Error : No totp_secret found for the url slug : my_slug`. This is correct behaviour but just needs graceful error handling on the frontend side. (and similar bugs)

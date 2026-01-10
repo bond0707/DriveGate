@@ -16,11 +16,10 @@ from app.utils.dependencies import get_current_user
 totp_router = APIRouter()
 
 @totp_router.get("/setup", response_model=TOTPSecretResponse, status_code=status.HTTP_200_OK)
-async def return_totp_secret_and_uri(user: UserModel = Depends(get_current_user)):
+async def return_random_totp_secret_and_uri(user: UserModel = Depends(get_current_user)):
     try:
         totp_secret = totp_service.generate_totp_secret()
         uri = totp_service.get_provisioning_uri(user.email, totp_secret)
-        print(uri)
         return {
             "totp_secret": totp_secret,
             "provisioning_uri": uri
@@ -31,6 +30,30 @@ async def return_totp_secret_and_uri(user: UserModel = Depends(get_current_user)
             detail      = str(e)
         )
 
+@totp_router.get("/rescan", response_model=TOTPSecretResponse, status_code=status.HTTP_200_OK)
+async def return_current_totp_secret_and_uri(
+    user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        totp_secret = await user_service.get_totp_secret_from_user_id_drive_type(db, user.id, DriveType.GOOGLE_DRIVE)
+        
+        if totp_secret is None:
+            raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail      = "TOTP Secret not found for the user!"
+            )
+
+        provisioning_uri = totp_service.get_provisioning_uri(user.email, totp_secret)
+        return {
+            "totp_secret": totp_secret,
+            "provisioning_uri": provisioning_uri
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail      = str(e)
+        )
 
 @totp_router.post("/store", response_model=MessageResponse, status_code=status.HTTP_200_OK)
 async def verify_and_store_totp_secret(

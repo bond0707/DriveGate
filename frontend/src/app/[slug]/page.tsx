@@ -12,9 +12,6 @@ import {
     List,
     ListItem,
     ListItemIcon,
-    ListItemText,
-    ListItemSecondaryAction,
-    Tooltip,
     useTheme,
     Dialog,
     DialogTitle,
@@ -23,7 +20,6 @@ import {
 } from '@mui/material';
 import {
     CloudUpload,
-    Security,
     CheckCircle,
     Error as ErrorIcon,
     Close,
@@ -74,6 +70,9 @@ export default function PublicUploadPage() {
     const [files, setFiles] = useState<FileStatus[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [backWarningOpen, setBackWarningOpen] = useState(false);
+
+    // Rate Limit Countdown State
+    const [rateLimitSeconds, setRateLimitSeconds] = useState<number | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // --- Effects ---
@@ -87,8 +86,8 @@ export default function PublicUploadPage() {
                 setIsPageLoading(false);
             } catch (err: any) {
                 console.error('Slug validation failed:', err);
-                // If slug doesn't exist (404) or any error, redirect to landing page
-                router.replace('/');
+                // If slug doesn't exist (404) or any error, redirect to landing page with message
+                router.replace('/?invalid_link=true');
             }
         };
 
@@ -103,6 +102,29 @@ export default function PublicUploadPage() {
             setTimeout(() => inputRefs.current[0]?.focus(), 100);
         }
     }, [step, isPageLoading]);
+
+    // Rate limit countdown timer
+    useEffect(() => {
+        if (rateLimitSeconds === null || rateLimitSeconds <= 0) {
+            if (rateLimitSeconds === 0) {
+                // Clear error when countdown reaches 0
+                setVerifyError('');
+                setRateLimitSeconds(null);
+            }
+            return;
+        }
+
+        const timer = setInterval(() => {
+            setRateLimitSeconds(prev => {
+                if (prev === null || prev <= 1) {
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [rateLimitSeconds]);
 
     // Handle back button warning during upload
     useEffect(() => {
@@ -142,7 +164,6 @@ export default function PublicUploadPage() {
             setTimeout(() => inputRefs.current[index + 1]?.focus(), 0);
         }
 
-
         // Auto-submit if filled
         if (newOtp.every(d => d !== '')) {
             verifyTotp(newOtp.join(''));
@@ -166,7 +187,6 @@ export default function PublicUploadPage() {
         });
         setOtp(newOtp);
 
-
         if (newOtp.every(d => d !== '')) {
             verifyTotp(newOtp.join(''));
         }
@@ -175,7 +195,6 @@ export default function PublicUploadPage() {
     const verifyTotp = async (code: string) => {
         setIsVerifying(true);
         setVerifyError('');
-
 
         // Artificial delay for UX
         await new Promise(r => setTimeout(r, 800));
@@ -192,7 +211,21 @@ export default function PublicUploadPage() {
         } catch (err: any) {
             console.error('Verification failed:', err);
             const detail = err.response?.data?.detail;
-            setVerifyError(typeof detail === 'string' ? detail : 'Invalid code. Please try again.');
+            const errorMessage = typeof detail === 'string' ? detail : 'Invalid code. Please try again.';
+
+            // Check if this is a rate limit error (429) and parse seconds
+            if (err.response?.status === 429 && typeof detail === 'string') {
+                // Parse "Too many attempts for this slug. Blocked for Xm Ys." or "...Blocked for Xs."
+                const timeMatch = detail.match(/Blocked for (?:(\d+)m\s*)?(\d+)s/);
+                if (timeMatch) {
+                    const minutes = parseInt(timeMatch[1] || '0', 10);
+                    const seconds = parseInt(timeMatch[2] || '0', 10);
+                    const totalSeconds = minutes * 60 + seconds;
+                    setRateLimitSeconds(totalSeconds);
+                }
+            }
+
+            setVerifyError(errorMessage);
             // Clear Inputs on error
             setOtp(['', '', '', '', '', '']);
             inputRefs.current[0]?.focus();
@@ -235,7 +268,6 @@ export default function PublicUploadPage() {
                 file_name: fileStatus.file.name,
                 file_size: fileStatus.file.size,
                 mime_type: fileStatus.file.type || 'application/octet-stream',
-                md5_checksum: "placeholder"
             }, {
                 headers: { 'Authorization': `Bearer ${uploadToken}` },
                 signal,
@@ -247,10 +279,10 @@ export default function PublicUploadPage() {
             await api.put(upload_url, fileStatus.file, {
                 headers: {
                     'Content-Type': fileStatus.file.type || 'application/octet-stream',
-                    // Remove Authorization header for Google signed URL
+                    // Remove Authorization header for Google/AWS signed URL to avoid 403
                     'Authorization': undefined as unknown as string,
                 },
-                // Disable default Authorization header for this request
+                // Explicitly transform request to remove the Auth header if using global interceptors
                 transformRequest: [(data, headers) => {
                     delete headers['Authorization'];
                     return data;
@@ -280,11 +312,6 @@ export default function PublicUploadPage() {
                 status: 'error',
                 progress: 0,
                 error: err.message || 'Upload failed'
-            setFiles(prev => prev.map((f, i) => i === fileIndex ? {
-                ...f,
-                status: 'error',
-                progress: 0,
-                error: err.message || 'Upload failed'
             } : f));
         }
     };
@@ -295,7 +322,6 @@ export default function PublicUploadPage() {
         const signal = abortControllerRef.current.signal;
 
         setIsUploading(true);
-
 
         // Filter pending files and map them to their current index
         const pendingFiles = files
@@ -326,9 +352,6 @@ export default function PublicUploadPage() {
     // Check completion
     useEffect(() => {
         if (files.length > 0 && !isUploading && files.every(f => f.status === 'success')) {
-            // Optional: Auto-advance to success screen after short delay
-            const timer = setTimeout(() => setStep('success'), 1000);
-            return () => clearTimeout(timer);
             // Optional: Auto-advance to success screen after short delay
             const timer = setTimeout(() => setStep('success'), 1000);
             return () => clearTimeout(timer);
@@ -479,7 +502,12 @@ export default function PublicUploadPage() {
                                         animate={{ opacity: 1, height: 'auto' }}
                                         exit={{ opacity: 0, height: 0 }}
                                     >
-                                        <Typography color="error" sx={{ mb: 2 }}>{verifyError}</Typography>
+                                        <Typography color="error" sx={{ mb: 2 }}>
+                                            {rateLimitSeconds !== null && rateLimitSeconds > 0
+                                                ? `Too many attempts. Try again in ${Math.floor(rateLimitSeconds / 60) > 0 ? `${Math.floor(rateLimitSeconds / 60)}m ` : ''}${rateLimitSeconds % 60}s`
+                                                : verifyError
+                                            }
+                                        </Typography>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -698,7 +726,6 @@ export default function PublicUploadPage() {
                             <Typography color="text.secondary" sx={{ mb: 4 }}>
                                 {files.length} file{files.length !== 1 ? 's' : ''} uploaded successfully.
                             </Typography>
-
 
                             <Button variant="outlined" onClick={() => {
                                 setStep('totp');

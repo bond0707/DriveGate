@@ -2,7 +2,38 @@
 
 This router manages custom URL slugs and Google Drive upload link generation.
 
-### **Test Case 1: Update User URL Slug**
+---
+
+### **Test Case 1: Validate URL Slug (Public Endpoint)**
+
+Validates if a URL slug exists and is associated with a user.
+
+- **HTTP Method:** `GET`
+- **Endpoint:** `/url/validate-slug`
+- **Authentication:** ❌ Not required
+
+#### Query Parameters
+
+```html
+url_slug=<URL_SLUG>
+```
+
+#### Successful Response (200)
+
+```json
+{
+  "message": "Url slug is valid!"
+}
+```
+
+#### Error Responses
+
+* **404 Not Found** – URL slug is invalid or not found
+* **500 Internal Server Error** – Database error
+
+---
+
+### **Test Case 2: Update User URL Slug**
 
 * **HTTP Method:** `PATCH`
 * **Endpoint URL:** `http://localhost:8000/url/update`
@@ -39,7 +70,42 @@ This router manages custom URL slugs and Google Drive upload link generation.
 
 ---
 
-### **Test Case 2: Get Google Drive Upload Link**
+### **Test Case 3: Check Slug Availability**
+
+Checks if a URL slug is available for use.
+
+* **HTTP Method:**`GET`
+* **Endpoint:** `/url/check-availability`
+* **Authentication:** Required (Regular JWT)
+
+#### Headers
+
+```http
+Authorization: Bearer 
+```
+
+#### Query Parameters
+
+```html
+slug=<URL_SLUG>
+```
+
+#### Successful Response (200)
+
+```json
+{
+  "available": true
+}
+```
+
+#### Error Responses
+
+* **401 Unauthorized** – Missing or invalid JWT
+* **500 Internal Server Error** – Database error
+
+---
+
+### **Test Case 4: Get Google Drive Upload Link**
 
 * **HTTP Method:** `POST`
 * **Endpoint URL:** `http://localhost:8000/url/get-upload-link`
@@ -66,3 +132,13 @@ This router manages custom URL slugs and Google Drive upload link generation.
     "upload_url": "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=....."
   }
   ```
+
+---
+
+## Notes
+
+* URL slugs must be alphanumeric with hyphens (no spaces or special characters).
+* The `/validate-slug` endpoint is public and does not require authentication.
+* The `/check-availability` and `/update` endpoints require a regular JWT access token.
+* The `/get-upload-link` endpoint requires a short-lived upload token obtained from TOTP verification.
+* Upload tokens are issued by the `/totp/verify` endpoint (see TOTP router documentation).

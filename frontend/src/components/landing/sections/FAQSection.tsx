@@ -29,6 +29,10 @@ const faqs = [
         question: 'Why are there multiple folders with the same name in my Drive?',
         answer: 'Google Drive allows multiple folders to have the exact same name. This typically happens if you change your folder name (e.g. from "A" to "B") and then change it back to "A". To protect your privacy, DriveGate simply creates a new folder for the new setting rather than scanning your entire Drive history to find the old one.',
     },
+    {
+        question: 'Does my Drive data get deleted when I delete my account?',
+        answer: 'No, your files stay safe in your Google Drive. DriveGate only uploads files to your designated folder - we never delete anything. When you delete your account, we remove your DriveGate settings, but all your uploaded files remain exactly where they are in your Drive.',
+    },
 ];
 
 export default function FAQSection() {

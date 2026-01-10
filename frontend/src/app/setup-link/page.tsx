@@ -70,6 +70,12 @@ export default function SetupLinkPage() {
             return;
         }
 
+        // Check if slug actually changed (only for updates)
+        if (isUpdate && slug === user?.url_slug) {
+            setError("That's already your current link");
+            return;
+        }
+
         setIsCreating(true);
         setError('');
 
