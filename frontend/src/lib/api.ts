@@ -2,7 +2,9 @@ import axios from 'axios';
 
 export const axiosInstance = axios;
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use local Next.js API proxy (adds X-API-Key server-side)
+// Requests to /api/* are forwarded to NEXT_PUBLIC_API_URL with the secret key
+const API_URL = '/api';
 
 export const api = axios.create({
     baseURL: API_URL,

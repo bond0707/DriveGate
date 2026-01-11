@@ -1,15 +1,35 @@
-# Not sure if this is a optimized way for protected routing recheck it for me (copy understood. seems good to me but i think you know more about this than me)
 from typing import Optional
+from app.core.config import settings
 from app.database.connection import get_db
 from app.utils.jwt_manager import jwt_manager
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends, HTTPException, status
 from app.services.user_service import user_service
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, Security, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, APIKeyHeader
 
+# APIKeyHeader for making sure that only calls from frontend are accepted.
+api_access = APIKeyHeader(name="X-API-Key", scheme_name="Server API Key", auto_error=False)
+# HTTPBearer for extraction upload header
+uploads    = HTTPBearer(scheme_name="Upload Token", auto_error=False)
 # HTTPBearer for extracting Authorization header
-security = HTTPBearer(scheme_name="Access Token", auto_error=False)
-uploads  = HTTPBearer(scheme_name="Upload Token", auto_error=True)
+security   = HTTPBearer(scheme_name="Access Token", auto_error=False)
+
+async def verify_api_key(
+    key: Optional[str] = Security(api_access)
+) -> str:
+    if key is None:
+        raise HTTPException(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail      = "Missing X-API-Key header"
+        )
+
+    if key != settings.API_KEY:
+        raise HTTPException(
+            status_code = status.HTTP_403_FORBIDDEN,
+            detail      = "Invalid API Key",
+        )
+
+    return key
 
 async def get_access_token_payload(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
