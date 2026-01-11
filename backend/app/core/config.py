@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -26,3 +27,4 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
+settings.DB_SERVICE_CA_PATH = os.path.join(os.path.dirname(__file__), settings.DB_SERVICE_CA_PATH)
