@@ -23,6 +23,8 @@ certifi==2025.11.12
     #   httpx
     #   requests
     #   sentry-sdk
+cffi==2.0.0
+    # via cryptography
 charset-normalizer==3.4.4
     # via requests
 click==8.3.1
@@ -34,6 +36,8 @@ colorama==0.4.6
     # via
     #   click
     #   uvicorn
+cryptography==46.0.3
+    # via -r requirements.in
 dnspython==2.8.0
     # via email-validator
 ecdsa==0.19.1
@@ -110,13 +114,18 @@ pyasn1==0.6.1
     #   rsa
 pyasn1-modules==0.4.2
     # via google-auth
+pycparser==2.23
+    # via cffi
 pydantic[email]==2.12.5
     # via
     #   -r requirements.in
     #   fastapi
     #   fastapi-cloud-cli
+    #   pydantic-settings
 pydantic-core==2.41.5
     # via pydantic
+pydantic-settings==2.12.0
+    # via -r requirements.in
 pygments==2.19.2
     # via rich
 pyotp==2.9.0
@@ -126,6 +135,7 @@ pyparsing==3.3.1
 python-dotenv==1.2.1
     # via
     #   -r requirements.in
+    #   pydantic-settings
     #   uvicorn
 python-jose==3.5.0
     # via -r requirements.in
@@ -175,7 +185,9 @@ typing-extensions==4.15.0
     #   typer
     #   typing-inspection
 typing-inspection==0.4.2
-    # via pydantic
+    # via
+    #   pydantic
+    #   pydantic-settings
 uritemplate==4.2.0
     # via google-api-python-client
 urllib3==2.6.2
