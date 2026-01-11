@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     DB_SERVICE_CA_PATH: str
 
+    CORS_ORIGIN: str
+
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int
