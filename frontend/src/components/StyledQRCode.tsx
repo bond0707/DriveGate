@@ -31,6 +31,60 @@ export default function StyledQRCode({
     const canvasSize = size * scale;
 
     useEffect(() => {
+        // Helper functions defined inside useEffect to satisfy lint rules
+        const drawRoundedRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h, r);
+            ctx.fill();
+        };
+
+        const drawRoundedStroke = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+            ctx.beginPath();
+            ctx.roundRect(x, y, w, h, r);
+            ctx.stroke();
+        };
+
+        const drawLogo = (
+            ctx: CanvasRenderingContext2D,
+            src: string,
+            canvasSz: number,
+            scaledLogoSize: number,
+            modSize: number
+        ): Promise<void> => {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    const logoX = (canvasSz - scaledLogoSize) / 2;
+                    const logoY = (canvasSz - scaledLogoSize) / 2;
+                    const padding = modSize * 0.5;
+
+                    // Draw background circle
+                    ctx.beginPath();
+                    ctx.arc(
+                        canvasSz / 2,
+                        canvasSz / 2,
+                        (scaledLogoSize / 2) + padding,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fillStyle = backgroundColor;
+                    ctx.fill();
+
+                    // ADDED: Draw Border Stroke (Same as Primary Color)
+                    ctx.lineWidth = modSize * 0.5; // Proportional thickness
+                    ctx.strokeStyle = primaryColor;
+                    ctx.stroke();
+
+                    // Draw logo
+                    ctx.drawImage(img, logoX, logoY, scaledLogoSize, scaledLogoSize);
+                    resolve();
+                };
+                img.onerror = () => resolve();
+                img.src = src;
+            });
+        };
+
         const generateQR = async () => {
             const canvas = canvasRef.current;
             if (!canvas || !value) return;
@@ -90,16 +144,16 @@ export default function StyledQRCode({
                 const drawEye = (r: number, c: number) => {
                     const x = (c + margin) * moduleSize;
                     const y = (r + margin) * moduleSize;
-                    const size = 7 * moduleSize;
+                    const eyeSize = 7 * moduleSize;
 
-                    const gradient = ctx.createLinearGradient(x, y, x + size, y + size);
+                    const gradient = ctx.createLinearGradient(x, y, x + eyeSize, y + eyeSize);
                     gradient.addColorStop(0, primaryColor);
                     gradient.addColorStop(1, secondaryColor);
                     ctx.strokeStyle = gradient;
                     ctx.fillStyle = gradient;
 
                     ctx.lineWidth = moduleSize;
-                    drawRoundedStroke(ctx, x + moduleSize / 2, y + moduleSize / 2, size - moduleSize, size - moduleSize, eyeRadiusOuter);
+                    drawRoundedStroke(ctx, x + moduleSize / 2, y + moduleSize / 2, eyeSize - moduleSize, eyeSize - moduleSize, eyeRadiusOuter);
 
                     const innerSize = 3 * moduleSize;
                     const innerOffset = 2 * moduleSize;
@@ -122,60 +176,7 @@ export default function StyledQRCode({
         };
 
         generateQR();
-    }, [value, canvasSize, logoSrc, logoSize, primaryColor, secondaryColor, scale]);
-
-    const drawRoundedRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
-        ctx.beginPath();
-        ctx.roundRect(x, y, w, h, r);
-        ctx.fill();
-    };
-
-    const drawRoundedStroke = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
-        ctx.beginPath();
-        ctx.roundRect(x, y, w, h, r);
-        ctx.stroke();
-    };
-
-    const drawLogo = (
-        ctx: CanvasRenderingContext2D,
-        src: string,
-        canvasSize: number,
-        scaledLogoSize: number,
-        moduleSize: number
-    ): Promise<void> => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-                const logoX = (canvasSize - scaledLogoSize) / 2;
-                const logoY = (canvasSize - scaledLogoSize) / 2;
-                const padding = moduleSize * 0.5;
-
-                // Draw background circle
-                ctx.beginPath();
-                ctx.arc(
-                    canvasSize / 2,
-                    canvasSize / 2,
-                    (scaledLogoSize / 2) + padding,
-                    0,
-                    Math.PI * 2
-                );
-                ctx.fillStyle = backgroundColor;
-                ctx.fill();
-
-                // ADDED: Draw Border Stroke (Same as Primary Color)
-                ctx.lineWidth = moduleSize * 0.5; // Proportional thickness
-                ctx.strokeStyle = primaryColor;
-                ctx.stroke();
-
-                // Draw logo
-                ctx.drawImage(img, logoX, logoY, scaledLogoSize, scaledLogoSize);
-                resolve();
-            };
-            img.onerror = () => resolve();
-            img.src = src;
-        });
-    };
+    }, [value, canvasSize, logoSrc, logoSize, primaryColor, secondaryColor, scale, backgroundColor]);
 
     return (
         <Box

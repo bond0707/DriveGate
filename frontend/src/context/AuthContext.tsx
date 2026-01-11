@@ -58,7 +58,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const login = (token: string, userData: User) => {
         localStorage.setItem('token', token);
         setUser(userData);
-        router.push('/dashboard');
+
+        // Determine where to redirect based on user's setup status
+        // Order: TOTP setup → Upload link → Folder setup → Dashboard
+        if (!userData.totp_secret) {
+            localStorage.setItem('totp_mode', 'first');
+            router.push('/setup-totp');
+        } else if (!userData.url_slug) {
+            router.push('/setup-link');
+        } else if (!userData.folder_id) {
+            router.push('/setup-folder');
+        } else {
+            router.push('/dashboard');
+        }
     };
 
     const logout = () => {

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, startTransition } from 'react';
 import { Box, Container, Typography, Button, useColorScheme, Paper, IconButton } from '@mui/material';
 import { useScroll, useMotionValueEvent, motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -31,7 +31,10 @@ export default function LandingPage() {
     // Check for invalid_link query parameter
     useEffect(() => {
         if (searchParams.get('invalid_link') === 'true') {
-            setShowInvalidLinkMessage(true);
+            // Use startTransition to avoid lint warning about setState in effect
+            startTransition(() => {
+                setShowInvalidLinkMessage(true);
+            });
             // Clean URL without reloading the page
             router.replace('/', { scroll: false });
             // Auto-dismiss after 8 seconds
@@ -48,14 +51,18 @@ export default function LandingPage() {
     useEffect(() => {
         if (heroButtonVisible) {
             // Scrolling up: hide second toggle immediately, show first after delay
-            setSecondToggleVisible(false);
+            startTransition(() => {
+                setSecondToggleVisible(false);
+            });
             const timer = setTimeout(() => {
                 setFirstToggleVisible(true);
             }, 300);
             return () => clearTimeout(timer);
         } else {
             // Scrolling down: hide first toggle immediately, show second after delay
-            setFirstToggleVisible(false);
+            startTransition(() => {
+                setFirstToggleVisible(false);
+            });
             const timer = setTimeout(() => {
                 setSecondToggleVisible(true);
             }, 50); // Small delay to let first toggle disappear
@@ -259,7 +266,7 @@ export default function LandingPage() {
                                     Link not found
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    That upload link doesn't exist. Please check the URL and try again.
+                                    That upload link doesn&apos;t exist. Please check the URL and try again.
                                 </Typography>
                             </Box>
                             <IconButton

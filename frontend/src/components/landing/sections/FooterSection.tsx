@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { Box, Container, Typography, Button, Link, IconButton, Paper } from '@mui/material';
-import { GitHub, Close } from '@mui/icons-material';
+import { Box, Container, Typography, Button, Link, Paper } from '@mui/material';
+import { GitHub } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useColorScheme } from '@mui/material/styles';
 import Image from 'next/image';

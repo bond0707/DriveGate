@@ -1,16 +1,17 @@
-'use client';
-import dynamic from 'next/dynamic';
-import SmoothScrollProvider from '@/components/SmoothScrollProvider';
+import type { Metadata } from 'next';
+import HomeClient from './Home.client';
 
-// Dynamic import to avoid SSR issues with Lenis
-const LandingPage = dynamic(() => import('@/components/landing/LandingPage'), {
-  ssr: false,
-});
+export const metadata: Metadata = {
+  title: 'DriveGate - Secure File Uploads to Your Google Drive',
+  description: 'Upload files to your Google Drive without logging in using TOTP authentication. Zero-login guest uploads, permanent custom URLs, and secure write-only access.',
+  openGraph: {
+    title: 'DriveGate - Secure File Uploads to Your Google Drive',
+    description: 'Upload files to your Google Drive without logging in using TOTP authentication. Zero-login guest uploads, permanent custom URLs, and secure write-only access.',
+    type: 'website',
+  },
+  keywords: ['Google Drive', 'file upload', 'TOTP', 'secure upload', 'cloud storage', 'one-way upload'],
+};
 
 export default function Home() {
-  return (
-    <SmoothScrollProvider>
-      <LandingPage />
-    </SmoothScrollProvider>
-  );
+  return <HomeClient />;
 }
