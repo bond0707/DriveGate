@@ -75,6 +75,11 @@ export default function DashboardClient() {
     const [, setIsDeleting] = useState(false);
     const [deletedUsername, setDeletedUsername] = useState<string>('');
 
+    // Profile Picture Retry State
+    const [pfpRetryCount, setPfpRetryCount] = useState(0);
+    const [pfpKey, setPfpKey] = useState(0); // Key to force re-render of Avatar
+    const MAX_PFP_RETRIES = 3;
+
     const loaderColor = theme.palette.mode === 'dark' ? '#80CBC4' : '#00897B';
 
     // ---------------------------------------------------------
@@ -289,10 +294,30 @@ export default function DashboardClient() {
                     <ThemeToggle />
                     <IconButton size="small" onClick={handleMenu} sx={{ ml: 1 }}>
                         <Avatar
-                            src={user.picture_url || undefined}
+                            key={pfpKey}
+                            src={pfpRetryCount >= MAX_PFP_RETRIES
+                                ? undefined
+                                : user.picture_url
+                                    ? `${user.picture_url}${pfpRetryCount > 0 ? `${user.picture_url.includes('?') ? '&' : '?'}retry=${pfpRetryCount}` : ''}`
+                                    : undefined
+                            }
                             sx={{ width: 32, height: 32, bgcolor: 'transparent', border: '2px solid', borderColor: 'primary.main' }}
+                            slotProps={{
+                                img: {
+                                    referrerPolicy: 'no-referrer',
+                                    onError: () => {
+                                        if (pfpRetryCount < MAX_PFP_RETRIES) {
+                                            // Retry loading after a short delay
+                                            setTimeout(() => {
+                                                setPfpRetryCount(prev => prev + 1);
+                                                setPfpKey(prev => prev + 1);
+                                            }, 1000);
+                                        }
+                                    }
+                                }
+                            }}
                         >
-                            {!user.picture_url && <AccountCircle sx={{ color: 'primary.main', fontSize: 28 }} />}
+                            <AccountCircle sx={{ color: 'primary.main', fontSize: 28 }} />
                         </Avatar>
                     </IconButton>
                     <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Server-side environment variables (not exposed to browser)
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
-const API_KEY = process.env.API_KEY;
+const API_KEY = process.env.BACKEND_API_KEY;
 
 async function handler(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
     // 1. Reconstruct the backend URL (e.g., /api/auth/me -> https://fastapi.../auth/me)

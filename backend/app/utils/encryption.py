@@ -19,5 +19,5 @@ class EncryptionUtil:
             # Data is not encrypted (legacy), return as-is
             return data
 
-# Singleton instance
-encryption_util = EncryptionUtil(settings.ENCRYPTION_KEY)
+# Singleton instance (@Dhruvil, I can still create instances of this class, I'll implement it properly later. Or you can do it too.)
+encryption_util = EncryptionUtil(settings.DB_FIELD_ENCRYPTION_KEY)

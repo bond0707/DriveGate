@@ -1,5 +1,5 @@
 'use client';
-import { IconButton, Tooltip } from '@mui/material';
+import { IconButton, Tooltip, Skeleton } from '@mui/material';
 import { DarkMode, WbSunny } from '@mui/icons-material';
 import { useColorScheme } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,16 +8,28 @@ import React from 'react';
 const MotionIconButton = motion.create(IconButton);
 
 export default function ThemeToggle() {
-    const { mode, setMode } = useColorScheme();
+    const { mode, setMode, systemMode } = useColorScheme();
     const [mounted, setMounted] = React.useState(false);
 
     React.useEffect(() => {
         setMounted(true);
     }, []);
 
-    if (!mounted) return null;
+    // Show a skeleton placeholder during SSR/hydration to prevent layout shift
+    if (!mounted) {
+        return (
+            <Skeleton
+                variant="circular"
+                width={40}
+                height={40}
+                sx={{ bgcolor: 'action.hover' }}
+            />
+        );
+    }
 
-    const isDark = mode === 'dark';
+    // Determine actual theme - handle 'system' mode by using systemMode
+    const resolvedMode = mode === 'system' ? systemMode : mode;
+    const isDark = resolvedMode === 'dark';
 
     return (
         <Tooltip title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>

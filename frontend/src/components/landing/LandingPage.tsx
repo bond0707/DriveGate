@@ -8,8 +8,10 @@ import Image from 'next/image';
 import ThemeToggle from '../ThemeToggle';
 import {
     HeroSection,
+    WhatIsSection,
     ProblemSolutionSection,
     FeaturesSection,
+    UseCasesSection,
     TutorialSection,
     TrustSection,
     FAQSection,
@@ -212,8 +214,10 @@ export default function LandingPage() {
             {/* Main Content */}
             <main>
                 <HeroSection onVisibilityChange={setHeroButtonVisible} onHowItWorksClick={handleHowItWorksClick} />
+                <WhatIsSection />
                 <ProblemSolutionSection />
                 <FeaturesSection />
+                <UseCasesSection />
                 <TutorialSection ref={tutorialRef} />
                 <TrustSection />
                 <FAQSection />

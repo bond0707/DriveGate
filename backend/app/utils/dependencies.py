@@ -23,7 +23,7 @@ async def verify_api_key(
             detail      = "Missing X-API-Key header"
         )
 
-    if key != settings.API_KEY:
+    if key != settings.BACKEND_API_KEY:
         raise HTTPException(
             status_code = status.HTTP_403_FORBIDDEN,
             detail      = "Invalid API Key",

@@ -233,7 +233,7 @@ export default function HeroSection({ onVisibilityChange, onHowItWorksClick }: H
                                     fontSize: { xs: '0.95rem', md: '1.125rem' },
                                 }}
                             >
-                                Upload files to your Google Drive from any device without ever typing your password. Just scan, verify, and drop.
+                                Upload files to your Google Drive from any device using just a 6-digit code from your authenticator app. No login needed on untrusted devices.
                             </Typography>
                         </AnimatedSection>
 

@@ -2,13 +2,13 @@ import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    API_KEY: str
-
     ENV_TYPE: str
+    CORS_ORIGIN: str
+    BACKEND_API_KEY: str
 
     DATABASE_URL: str
-    ENCRYPTION_KEY: str
     DB_SERVICE_CA_PATH: str
+    DB_FIELD_ENCRYPTION_KEY: str
  
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
