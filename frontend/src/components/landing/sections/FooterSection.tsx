@@ -32,7 +32,12 @@ export default function FooterSection() {
                         }}
                     >
                         {/* Legal Links */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: { xs: 2, sm: 3 },
+                            flexDirection: { xs: 'column', sm: 'row' },
+                        }}>
                             <Link
                                 href="/privacy"
                                 sx={{
@@ -44,7 +49,7 @@ export default function FooterSection() {
                             >
                                 Privacy Policy
                             </Link>
-                            <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>•</Typography>
+                            <Typography color="text.secondary" sx={{ fontSize: '0.875rem', display: { xs: 'none', sm: 'block' } }}>•</Typography>
                             <Link
                                 href="/terms"
                                 sx={{
@@ -56,7 +61,7 @@ export default function FooterSection() {
                             >
                                 Terms of Service
                             </Link>
-                            <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>•</Typography>
+                            <Typography color="text.secondary" sx={{ fontSize: '0.875rem', display: { xs: 'none', sm: 'block' } }}>•</Typography>
                             <Link
                                 component="button"
                                 onClick={() => setContactOpen(true)}

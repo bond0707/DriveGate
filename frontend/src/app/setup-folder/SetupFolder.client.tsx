@@ -157,7 +157,7 @@ export default function SetupFolderClient() {
                     </MotionBox>
 
                     <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' }, mb: 1 }}>
-                        {isUpdate ? 'Update Folder Name' : 'Create Drive Folder'}
+                        {isUpdate ? 'Update Folder Name' : 'Name Your Drive Folder'}
                     </Typography>
                     <Typography color="text.secondary" sx={{ mb: 3, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                         Name the folder where uploads will be stored
