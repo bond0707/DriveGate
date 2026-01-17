@@ -7,7 +7,7 @@ import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://drivedrop.app'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://drivegate.app'),
   title: {
     default: "DriveGate",
     template: "%s | DriveGate",
