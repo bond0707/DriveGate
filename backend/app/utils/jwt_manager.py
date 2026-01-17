@@ -1,11 +1,7 @@
-
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from jose import JWTError, jwt  # python-jose library for JWT operations
-
-# Import our app configuration
+from jose import JWTError, jwt
 from app.core.config import settings
-
+from typing import Optional, Dict, Any
+from datetime import datetime, timedelta
 
 class JWTManager:
     """
@@ -15,25 +11,22 @@ class JWTManager:
     - exp: Expiration time
     - iat: Issued at time
     """
-    
     def __init__(self):
-        
         self.secret_key = settings.JWT_SECRET_KEY
         self.algorithm = settings.JWT_ALGORITHM
         self.access_token_expire_minutes = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
     
     def create_access_token(self, data: Dict[str, Any]) -> str:
-        
         # Create a copy of the data to avoid modifying original
         to_encode = data.copy()
         
         # Calculate expiration time
-        expire = datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
-        
+        expire = datetime.now() + timedelta(minutes=self.access_token_expire_minutes)
+
         # Add standard JWT claims
         to_encode.update({
             "exp": expire,  # Expiration time
-            "iat": datetime.utcnow(),  # Issued at time
+            "iat": datetime.now(),  # Issued at time
             "type": "access"  # Token type (useful if we have refresh tokens)
         })
         
@@ -43,11 +36,9 @@ class JWTManager:
             self.secret_key, 
             algorithm=self.algorithm
         )
-        
         return encoded_jwt
     
     def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
-        
         try:
             # Decode and verify the token
             payload = jwt.decode(
@@ -68,7 +59,6 @@ class JWTManager:
             return None
     
     def create_user_token(self, user_id: int, email: str) -> str:
-        
         data = {
             "user_id": user_id,
             "email": email,
@@ -77,17 +67,19 @@ class JWTManager:
         
         return self.create_access_token(data)
     
+    def create_upload_token(self, url_slug: str) -> str:
+        """Takes the URL slug as an arguement."""
+        data = {"url_slug": url_slug}
+        return self.create_access_token(data)
+    
     def extract_user_id(self, token: str) -> Optional[int]:
-       
         payload = self.verify_token(token)
         if payload:
             return payload.get("user_id")
         return None
     
     def is_token_expired(self, token: str) -> bool:
-        
         payload = self.verify_token(token)
         return payload is None
-
 
 jwt_manager = JWTManager()

@@ -1,19 +1,12 @@
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import Flow
+import httpx
+from fastapi import status
+from typing import Dict, Any
+from app.core.config import settings
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from google.auth.transport.requests import Request
-import httpx
-from typing import Dict, Any, Optional
-import json
-from datetime import datetime, timedelta
-
-
-from app.core.config import settings
-
+from google.oauth2.credentials import Credentials
 
 # For GoogleAuth 2.0 and Drive Operations
-
 class GoogleAuthService:
     # Google Oauth2.0 endpoints
     GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -25,14 +18,12 @@ class GoogleAuthService:
     DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"
 
     def __init__(self):
-
         # from env
         self.client_id = settings.GOOGLE_CLIENT_ID
         self.client_secret = settings.GOOGLE_CLIENT_SECRET
         self.redirect_uri = settings.GOOGLE_REDIRECT_URI
 
     def get_authorization_url(self) -> str:
-
         # defining Permissions
         scopes = [
             'openid',
@@ -41,7 +32,7 @@ class GoogleAuthService:
             self.DRIVE_SCOPE # for files modification
         ]
 
-        # Auth url parameter SHitties part to be honest
+        # Auth url parameter SHitties part to be honest (@Dhruvil brooo google authlib handles this internally (we just need to call functions))
         auth_url = (
             f"{self.GOOGLE_AUTH_URL}?"
             f"client_id={self.client_id}&"
@@ -66,6 +57,7 @@ class GoogleAuthService:
 
         # Sending request to google [post]
         async with httpx.AsyncClient() as client:
+            print(token_data)
             response = await client.post(
                 self.GOOGLE_TOKEN_URL,
                 data=token_data,
@@ -73,10 +65,10 @@ class GoogleAuthService:
             )
 
             # Checking if rizz worked
-            if response.status_code != 200:
-                # Kirtan's fault not mine
-                error_details = response.json().get("error description",'Unkown error')
-                raise Exception(f'Token Exchanged Failed Because of Kirtan: {error_details}')
+            if response.status_code != status.HTTP_200_OK:
+                # Kirtan's fault not mine (yeah sure mf)
+                error_details = response.json().get("error_description", 'Unkown error')
+                raise Exception(f'Token Exchange Failed Because of Dhruvil : {error_details}')
 
             return response.json()
 
@@ -89,72 +81,61 @@ class GoogleAuthService:
             response.raise_for_status() # raise excpetion for bad status
             return response.json()
 
-
     # Creating drive folder as we discussed chigga change if you want to
-    async def create_drive_folder(self, access_token: str, user_email: str) -> str:
+    async def create_drive_folder(self, folder_name: str, access_token: str) -> str:
         try:
             # Create credentials object from access token
-            credentials = Credentials(token=access_token)
+            credentials = Credentials(token = access_token)
 
             # Build google Drive Service Client
             drive_service = build(
                 'drive',
                 self.DRIVE_API_VERSION,
-                credentials=credentials
+                credentials = credentials
             )
 
-            # Folder name it's temp for now change if you want
-            folder_name= f'TOTP_UPLOADER'
             folder_metadata = {
                 'name': folder_name,
                 'mimeType': 'application/vnd.google-apps.folder',
                 'description': 'TOTP UPLOADER FILES'
             }
-
-            # IDK THIS PART AI USED
             # Create folder
+            # IDK THIS PART AI USED (THEN WHY DIDNT YOU LET ME DO IT NIGAA I HAD IT DONE IN MY PC!!!!)
             folder = drive_service.files().create(
-                body=folder_metadata,
-                fields='id'  # Only return the folder ID
+                body   = folder_metadata,
+                fields = 'id'  # Only return the folder ID
             ).execute()
 
             return folder.get('id')
 
         except HttpError as e:
-            raise Exception(f'Google Drive APi Error: {e}')
+            raise Exception(f'Google Drive API Error : {e}')
         except Exception as er:
-            raise Exception(f'FAiled to Create Drive Uploader: {er}')
+            raise Exception(f'Failed to Create Drive Folder : {er}')
 
     # Chal have longterm mate olu kari dau credentials
     def create_google_credentials(self, token_data: Dict[str, Any]) -> Credentials:
         return Credentials(
-            token=token_data.get('access_token'),
-            refresh_token=token_data.get('refresh_token'),
-            token_uri=self.GOOGLE_TOKEN_URL,
-            client_id=self.client_id,
-            client_secret=self.client_secret,
-            scopes=[self.DRIVE_SCOPE, "openid", "email", "profile"]
+            client_id     = self.client_id,
+            client_secret = self.client_secret,
+            token_uri     = self.GOOGLE_TOKEN_URL,
+            token         = token_data.get('access_token'),
+            refresh_token = token_data.get('refresh_token'),
+            scopes        = [self.DRIVE_SCOPE, "openid", "email", "profile"],
         )
 
+    async def get_access_token(self, refresh_token: str) -> Dict[str, Any]:
+        token_data = {
+            'refresh_token': refresh_token,
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'grant_type': 'refresh_token'
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(self.GOOGLE_TOKEN_URL, data=token_data)
+            if response.status_code != 200:
+                raise Exception(f"Token refresh failed: {response.text}")
+            return response.json()["access_token"]
 
 google_auth_service = GoogleAuthService()
-
-
-
-
-'''
-idk if we need this
-async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
-    token_data = {
-        'refresh_token': refresh_token,
-        'client_id': self.client_id,
-        'client_secret': self.client_secret,
-        'grant_type': 'refresh_token'
-    }
-
-    async with httpx.AsyncClient() as client:
-        response = await client.post(self.GOOGLE_TOKEN_URL, data=token_data)
-        if response.status_code != 200:
-            raise Exception(f"Token refresh failed: {response.text}")
-        return response.json()
-'''
