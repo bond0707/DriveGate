@@ -44,7 +44,6 @@ A web app that lets users upload data to their own google drives without logging
 
 * [ ] add actual user CRUD.
 * [ ] add multiple accounts from same providers functionality.
-* [ ] Encrypt refresh tokens before storing in db `MAXIMUM PRIORITY`
 
 ## Bugs To Fix
 
