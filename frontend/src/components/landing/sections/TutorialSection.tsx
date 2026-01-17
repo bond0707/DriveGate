@@ -26,7 +26,7 @@ const tutorialSteps = [
         step: 3,
         title: 'Choose your URL',
         description: 'Pick a custom URL slug for your upload page.',
-        example: 'drivegate.dev/my-uploads',
+        example: 'drivegate.app/my-uploads',
         icon: LinkIcon,
         color: '#5C6BC0',
     },

@@ -135,7 +135,7 @@ export default function TermsClient() {
                         If you have any questions about these Terms, please contact us at:
                     </Typography>
                     <Typography sx={{ fontWeight: 600 }}>
-                        Email: <Link href="mailto:terms@drivegate.dev"></Link>
+                        Email: <Link href="mailto:support@drivegate.app">support@drivegate.app</Link>
                     </Typography>
                 </>
             ),

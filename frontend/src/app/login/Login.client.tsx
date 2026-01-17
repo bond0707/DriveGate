@@ -1,5 +1,5 @@
 'use client';
-import { Box, Button, Typography, Paper } from '@mui/material';
+import { Box, Button, Typography, Paper, useTheme } from '@mui/material';
 import { CloudUploadRounded, Google, HistoryEduRounded, SecurityRounded } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -10,6 +10,8 @@ const MotionBox = motion.create(Box);
 const MotionPaper = motion.create(Paper);
 
 export default function LoginClient() {
+    const theme = useTheme();
+    const mode = theme.palette.mode;
 
     const handleGoogleSignIn = async () => {
         try {
@@ -174,7 +176,7 @@ export default function LoginClient() {
                         gap: 2,
                         alignItems: 'center'
                     }}>
-                        <Image src="/logo-light.svg" alt="DriveGate" width={40} height={40} />
+                        <Image src={mode === 'dark' ? '/logo-dark.svg' : '/logo-light.svg'} alt="DriveGate" width={40} height={40} />
                         <Typography variant="h4" fontWeight="700" color="primary">
                             DriveGate
                         </Typography>

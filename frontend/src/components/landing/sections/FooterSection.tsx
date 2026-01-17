@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Box, Container, Typography, Button, Link, Paper } from '@mui/material';
-import { GitHub } from '@mui/icons-material';
+import { GitHub, Mail } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useColorScheme } from '@mui/material/styles';
 import Image from 'next/image';
@@ -190,6 +190,24 @@ export default function FooterSection() {
                                         koffandaff
                                     </Button>
                                 </Box>
+
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 3, mb: 1.5 }}>
+                                    Got questions or feedback? Send an email here!
+                                </Typography>
+                                <Button
+                                    variant="outlined"
+                                    fullWidth
+                                    startIcon={<Mail />}
+                                    href="mailto:support@drivegate.app"
+                                    sx={{
+                                        textTransform: 'none',
+                                        fontWeight: 600,
+                                        borderRadius: 100,
+                                        py: 1.5,
+                                    }}
+                                >
+                                    support@drivegate.app
+                                </Button>
                             </MotionPaper>
                         </Box>
                     </>

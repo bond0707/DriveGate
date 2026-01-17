@@ -166,7 +166,7 @@ export default function PrivacyClient() {
                         If you have any questions about this Privacy Policy, please contact us at:
                     </Typography>
                     <Typography sx={{ fontWeight: 600 }}>
-                        Email: <Link href="mailto:privacy@drivegate.dev"></Link>
+                        Email: <Link href="mailto:support@drivegate.app">support@drivegate.app</Link>
                     </Typography>
                 </>
             ),
