@@ -51,6 +51,15 @@ export default function SetupLinkClient() {
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
 
+    // Update page title based on mode
+    useEffect(() => {
+        if (isUpdate) {
+            document.title = 'Update Upload Link | DriveGate';
+        } else {
+            document.title = 'Setup Upload Link | DriveGate';
+        }
+    }, [isUpdate]);
+
     const handleClose = () => {
         router.push('/dashboard');
     };

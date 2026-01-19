@@ -1,5 +1,5 @@
 'use client';
-import { Box, Button, Typography, Paper, useTheme } from '@mui/material';
+import { Box, Button, Typography, Paper, useColorScheme } from '@mui/material';
 import { CloudUploadRounded, Google, HistoryEduRounded, SecurityRounded } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -10,8 +10,7 @@ const MotionBox = motion.create(Box);
 const MotionPaper = motion.create(Paper);
 
 export default function LoginClient() {
-    const theme = useTheme();
-    const mode = theme.palette.mode;
+    const { mode } = useColorScheme();
 
     const handleGoogleSignIn = async () => {
         try {
@@ -171,7 +170,7 @@ export default function LoginClient() {
                     {/* Mobile logo */}
                     <Box sx={{
                         display: { xs: 'flex', md: 'none' },
-                        justifyContent: 'center',
+                        justifyContent: 'flex-start',
                         mb: 4,
                         gap: 2,
                         alignItems: 'center'

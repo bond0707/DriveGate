@@ -4,130 +4,77 @@ All notable changes to the frontend are documented in this file.
 
 ---
 
-## [10-01-2026]
+## [19-01-2026]
+
+### Added
+
+- **Dynamic Page Titles** - Page titles now change based on context:
+  - `setup-totp`: Shows "Rescan TOTP", "Reset TOTP", or "Setup TOTP" based on mode
+  - `setup-folder`: Shows "Update Folder" or "Setup Folder" based on mode
+  - `setup-link`: Shows "Update Upload Link" or "Setup Upload Link" based on mode
 
 ### Changed
-- **Slug Page Dropzone** - Hidden when uploading or all files successfully uploaded
-- **TOTP Error Handling** - Inline error display without page redirection
+
+- **Landing Page Text Justification** - Added `textAlign: justify` for mobile across all sections:
+  - `HeroSection.tsx` - Hero description paragraph
+  - `WhatIsSection.tsx` - Main description
+  - `ProblemSolutionSection.tsx` - Problem and solution descriptions
+  - `FeaturesSection.tsx` - Feature card descriptions
+  - `UseCasesSection.tsx` - Subtitle and use case descriptions
+  - `TrustSection.tsx` - Zero Trust and permission descriptions
+  - `FAQSection.tsx` - FAQ answer text
+- **Hero Section Styling**:
+  - Increased `lineHeight` from 1.1 to 1.3 to prevent text clipping
+  - Increased TOTP animation width on mobile (240→300, 280→340)
+  - Increased TOTP animation padding on mobile (2.5→3)
+- **Contact Modal** - Balanced margins (`mt: 2.5, mb: 2.5`) for email text
+- **TOTP Secret Display** - Split 32-char secret into two 16-char lines on mobile with adjusted padding
+- **Login Page**:
+  - Mobile logo aligned to left instead of center
+  - Changed to `useColorScheme()` for proper reactive theme detection
+- **Delete Account Modal**:
+  - Buttons stack vertically on mobile (Delete Account first, Cancel below)
+  - Increased horizontal padding
 
 ### Fixed
-- Fixed dropzone remaining visible during upload transition delay
 
----
-
-## [09-01-2026] - `13c054f`
-
-### Added
-- **Landing Page Components** - Split into modular sections:
-  - `HeroSection.tsx` - Main hero with animations
-  - `FeaturesSection.tsx` - Feature highlights
-  - `TutorialSection.tsx` - Step-by-step guide
-  - `ProblemSolutionSection.tsx` - Problem/solution layout
-  - `TrustSection.tsx` - Trust indicators
-  - `FAQSection.tsx` - FAQ accordion
-  - `FooterSection.tsx` - Footer with links
-- **Animation Components**:
-  - `AnimatedSection.tsx` - Section animations
-  - `SmoothScrollProvider.tsx` - Smooth scroll behavior
-  - `TextReveal.tsx` - Text reveal animations
-
-### Changed
-- Updated `[slug]/page.tsx`, `dashboard/page.tsx`, `login/page.tsx`
-- Updated `setup-folder/page.tsx`, `setup-link/page.tsx`
-- Added `setup-totp/page.tsx`
-
----
-
-## [08-01-2026] - `ee10e55`, `3411508`, `da7c8ef`
-
-### Changed
-- **TOTP Setup UX** - Improved with split input fields (`3411508`)
-- **Rollback and fixes** - Fixed `api.ts`, `theme.ts` issues (`ee10e55`)
-- **Merge conflict resolution** - Dashboard and Slug pages (`da7c8ef`)
-
-### Fixed
-- Renamed `setup-totp/page.tsx` → `totp-setup/page.tsx` (rollback)
-
----
-
-## [08-01-2026] - `e274896`
-
-### Added
-- **Auth Callback Page** - `auth/google/callback/page.tsx`
-- **Auth Context** - `context/AuthContext.tsx`
-- **API Library** - `lib/api.ts` with axios configuration
-
-### Changed
-- Integrated frontend with backend
-- Fixed drive permission handling
-- Improved duplicated slug error handling
-- Updated theme configuration
-
----
-
-## [06-01-2026] - `0775558`, `88b72a3`
-
-### Added
-- **CHANGELOG.md** - Initial changelog
-- **Custom Logos**:
-  - `logo-dark.svg` - Dark mode logo
-  - `logo-light.svg` - Light mode logo
-- **Setup Folder Page** - `setup-folder/page.tsx`
-
-### Changed
-- Renamed `totp-setup/page.tsx` → `setup-totp/page.tsx`
-- Updated favicon
-- Updated `ThemeToggle.tsx` with warm amber sun icon
-- Updated dashboard, login, layout, slug, and setup-link pages
-
----
-
-## [03-01-2026] - `8ea828e`, `8abdea5`
-
-### Added
-- **Setup Documentation** - `setup.md`
-
----
-
-## [16-12-2025] - `e358122`
-
-### Added
-- **Initial Frontend Application**:
-  - Next.js project setup with TypeScript
-  - Pages: `[slug]`, `dashboard`, `login`, `setup-link`, `totp-setup`
-  - Components: `SquircleLoader.tsx`, `ThemeToggle.tsx`
-  - Theme configuration: `theme.ts`
-  - Global styles: `globals.css`
-
----
-
-## [13-12-2025] - `3c4f245`
-
-### Added
-- Initial commit with placeholder file
+- **Page Title Duplication** - Removed redundant ` | DriveGate` suffix from 9 pages:
+  - `dashboard/page.tsx`: Dashboard
+  - `setup-totp/page.tsx`: Setup TOTP
+  - `setup-folder/page.tsx`: Setup Folder
+  - `setup-link/page.tsx`: Setup Upload Link
+  - `[slug]/page.tsx`: Secure Upload
+  - `login/page.tsx`: Sign In
+  - `privacy/page.tsx`: Privacy Policy
+  - `terms/page.tsx`: Terms of Service
+  - `auth/google/callback/page.tsx`: Signing In...
 
 ---
 
 ## Files Summary
 
 ### Pages
-| File | Description |
-|------|-------------|
-| `[slug]/page.tsx` | Public upload page with TOTP verification |
-| `dashboard/page.tsx` | User dashboard with TOTP, link, and folder cards |
-| `login/page.tsx` | Google OAuth login page |
-| `setup-folder/page.tsx` | Drive folder configuration |
-| `setup-link/page.tsx` | URL slug setup |
-| `setup-totp/page.tsx` | TOTP setup with QR code |
-| `auth/google/callback/page.tsx` | OAuth callback handler |
+
+| File                              | Description                                      |
+| --------------------------------- | ------------------------------------------------ |
+| `[slug]/page.tsx`               | Public upload page with TOTP verification        |
+| `dashboard/page.tsx`            | User dashboard with TOTP, link, and folder cards |
+| `login/page.tsx`                | Google OAuth login page                          |
+| `setup-folder/page.tsx`         | Drive folder configuration                       |
+| `setup-link/page.tsx`           | URL slug setup                                   |
+| `setup-totp/page.tsx`           | TOTP setup with QR code                          |
+| `auth/google/callback/page.tsx` | OAuth callback handler                           |
+| `privacy/page.tsx`              | Privacy policy page                              |
+| `terms/page.tsx`                | Terms of service page                            |
 
 ### Components
-| File | Description |
-|------|-------------|
-| `SquircleLoader.tsx` | Animated loading spinner |
-| `ThemeToggle.tsx` | Dark/light mode toggle |
-| `StyledQRCode.tsx` | Styled QR code component |
-| `AnimatedSection.tsx` | Section animation wrapper |
-| `SmoothScrollProvider.tsx` | Smooth scroll context |
-| `TextReveal.tsx` | Text reveal animation |
-| `landing/*.tsx` | Landing page section components |
+
+| File                         | Description                     |
+| ---------------------------- | ------------------------------- |
+| `SquircleLoader.tsx`       | Animated loading spinner        |
+| `ThemeToggle.tsx`          | Dark/light mode toggle          |
+| `StyledQRCode.tsx`         | Styled QR code component        |
+| `AnimatedSection.tsx`      | Section animation wrapper       |
+| `SmoothScrollProvider.tsx` | Smooth scroll context           |
+| `TextReveal.tsx`           | Text reveal animation           |
+| `landing/*.tsx`            | Landing page section components |

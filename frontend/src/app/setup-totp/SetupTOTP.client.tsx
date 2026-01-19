@@ -91,6 +91,17 @@ function TOTPSetupContent() {
         fetchSetup();
     }, []);
 
+    // Update page title based on mode
+    useEffect(() => {
+        if (mode === 'rescan') {
+            document.title = 'Rescan TOTP | DriveGate';
+        } else if (mode === 'reset') {
+            document.title = 'Reset TOTP | DriveGate';
+        } else {
+            document.title = 'Setup TOTP | DriveGate';
+        }
+    }, [mode]);
+
     // 3. Handle Browser Back Button (Cleanup)
     useEffect(() => {
         const handlePopState = () => {
@@ -334,22 +345,43 @@ function TOTPSetupContent() {
                                 gap: 1,
                                 mb: 3,
                                 bgcolor: 'action.hover',
-                                p: 1,
+                                pl: 2,
+                                pt: 2,
+                                pb: 2,
+                                pr: 1,
                                 borderRadius: 2,
                                 width: 'fit-content',
                                 mx: 'auto'
                             }}>
-                                <Typography
-                                    variant="body2"
-                                    fontWeight="600"
-                                    sx={{
-                                        fontFamily: 'monospace',
-                                        letterSpacing: 1,
-                                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    }}
-                                >
-                                    {secret}
-                                </Typography>
+                                <Box sx={{
+                                    display: 'flex',
+                                    flexDirection: { xs: 'column', sm: 'row' },
+                                    alignItems: 'center',
+                                    gap: { xs: 0.25, sm: 0 },
+                                }}>
+                                    <Typography
+                                        variant="body2"
+                                        fontWeight="600"
+                                        sx={{
+                                            fontFamily: 'monospace',
+                                            letterSpacing: 1,
+                                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                        }}
+                                    >
+                                        {secret.slice(0, 16)}
+                                    </Typography>
+                                    <Typography
+                                        variant="body2"
+                                        fontWeight="600"
+                                        sx={{
+                                            fontFamily: 'monospace',
+                                            letterSpacing: 1,
+                                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                        }}
+                                    >
+                                        {secret.slice(16)}
+                                    </Typography>
+                                </Box>
                                 <Tooltip title="Copy Secret">
                                     <IconButton size="small" onClick={handleCopyToClipboard}>
                                         <ContentCopy fontSize="small" />

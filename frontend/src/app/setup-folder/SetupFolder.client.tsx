@@ -54,6 +54,15 @@ export default function SetupFolderClient() {
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
 
+    // Update page title based on mode
+    useEffect(() => {
+        if (isUpdate) {
+            document.title = 'Update Folder | DriveGate';
+        } else {
+            document.title = 'Setup Folder | DriveGate';
+        }
+    }, [isUpdate]);
+
     const handleClose = () => {
         localStorage.removeItem('folder_mode');
         // Set flag to tell dashboard to skip folder setup redirect

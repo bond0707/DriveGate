@@ -78,7 +78,7 @@ export default function UseCasesSection() {
                         variant="body1"
                         sx={{
                             color: 'text.secondary',
-                            textAlign: 'center',
+                            textAlign: { xs: 'justify', md: 'center' },
                             mb: 6,
                             maxWidth: 600,
                             mx: 'auto',
@@ -132,7 +132,7 @@ export default function UseCasesSection() {
                                     <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
                                         {useCase.title}
                                     </Typography>
-                                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, textAlign: { xs: 'justify', md: 'left' } }}>
                                         {useCase.description}
                                     </Typography>
                                 </Box>

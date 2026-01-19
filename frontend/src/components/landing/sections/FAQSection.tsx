@@ -121,7 +121,7 @@ export default function FAQSection() {
                                 </Typography>
                             </AccordionSummary>
                             <AccordionDetails sx={{ px: 3, pb: 3 }}>
-                                <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
+                                <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.7, textAlign: { xs: 'justify', md: 'left' } }}>
                                     {faq.answer}
                                 </Typography>
                             </AccordionDetails>

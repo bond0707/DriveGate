@@ -42,7 +42,7 @@ export default function ProblemSolutionSection() {
                             >
                                 Public devices are risky.
                             </Typography>
-                            <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.8 }}>
+                            <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.8, textAlign: { xs: 'justify', md: 'left' } }}>
                                 Need to save a file from a college computer, a friend&apos;s laptop, a cyber cafe, or a print shop?
                                 Logging into your full cloud account on a public device is risky.
                                 Session cookies, keyloggers, and prying eyes make your data vulnerable.
@@ -73,7 +73,7 @@ export default function ProblemSolutionSection() {
                             >
                                 Upload without logging in.
                             </Typography>
-                            <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.8 }}>
+                            <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.8, textAlign: { xs: 'justify', md: 'left' } }}>
                                 DriveGate lets you upload files using a temporary 6-digit code from your phone, just like
                                 the codes banking apps use. No password needed on the public device. No trace left behind.
                                 Your files go straight to your Drive, safely.

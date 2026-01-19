@@ -191,7 +191,7 @@ export default function FooterSection() {
                                     </Button>
                                 </Box>
 
-                                <Typography variant="body2" color="text.secondary" sx={{ mt: 3, mb: 1.5 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 2.5, mb: 2.5 }}>
                                     Got questions or feedback? Send an email here!
                                 </Typography>
                                 <Button

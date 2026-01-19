@@ -59,7 +59,7 @@ export default function TrustSection() {
                             <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
                                 Zero Trust Architecture
                             </Typography>
-                            <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
+                            <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.7, textAlign: { xs: 'justify', md: 'left' } }}>
                                 Your files are streamed directly to your drive, never stored on our servers.
                                 We act as a secure relay, nothing more.
                             </Typography>
@@ -94,7 +94,7 @@ export default function TrustSection() {
                                     >
                                         {perm.scope}
                                     </Typography>
-                                    <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, textAlign: { xs: 'justify', md: 'left' } }}>
                                         {perm.description}
                                     </Typography>
                                 </Box>

@@ -66,7 +66,7 @@ export default function WhatIsSection() {
                         variant="body1"
                         sx={{
                             color: 'text.secondary',
-                            textAlign: 'center',
+                            textAlign: { xs: 'justify', md: 'center' },
                             mb: 6,
                             maxWidth: 700,
                             mx: 'auto',

@@ -719,26 +719,26 @@ export default function DashboardClient() {
                     </Box>
                     Delete Account?
                 </DialogTitle>
-                <DialogContent sx={{ pb: 3, align: "center" }}>
+                <DialogContent sx={{ pb: 3, px: 3 }}>
                     <Typography color="text.secondary">
                         All your TOTP secrets and Drive data will be deleted <strong>instantly and permanently</strong>. This action cannot be undone.
                     </Typography>
                 </DialogContent>
-                <DialogActions sx={{ p: 2.5, pt: 0, gap: 1.5 }}>
-                    <Button
-                        variant="outlined"
-                        onClick={() => setDeleteDialogOpen(false)}
-                        sx={{ borderRadius: 2, flex: 1 }}
-                    >
-                        Cancel
-                    </Button>
+                <DialogActions sx={{ p: 2.5, pt: 0, gap: 1.5, flexDirection: { xs: 'column', sm: 'row' } }}>
                     <Button
                         variant="contained"
                         color="error"
                         onClick={handleConfirmDelete}
-                        sx={{ borderRadius: 2, flex: 1 }}
+                        sx={{ borderRadius: 2, flex: 1, width: { xs: '100%', sm: 'auto' }, order: { xs: 1, sm: 2 } }}
                     >
                         Delete Account
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        onClick={() => setDeleteDialogOpen(false)}
+                        sx={{ borderRadius: 2, flex: 1, width: { xs: '100%', sm: 'auto' }, order: { xs: 2, sm: 1 } }}
+                    >
+                        Cancel
                     </Button>
                 </DialogActions>
             </Dialog >

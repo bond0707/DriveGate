@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import SetupTOTPClient from './SetupTOTP.client';
 
 export const metadata: Metadata = {
-    title: 'Setup TOTP | DriveGate',
+    title: 'Setup TOTP',
     description: 'Set up two-factor authentication to secure your DriveGate uploads.',
 };
 

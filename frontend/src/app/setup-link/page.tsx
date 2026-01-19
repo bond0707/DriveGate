@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import SetupLinkClient from './SetupLink.client';
 
 export const metadata: Metadata = {
-    title: 'Setup Upload Link | DriveGate',
+    title: 'Setup Upload Link',
     description: 'Create or update your custom URL for receiving files via DriveGate.',
 };
 
