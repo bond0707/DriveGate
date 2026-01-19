@@ -110,7 +110,7 @@ export default function SetupLinkClient() {
         }
     };
 
-    const previewUrl = `yoursite.com/${slug || 'your-link'}`;
+    const previewUrl = `drivegate.app/${slug || 'your-link'}`;
 
     return (
         <Box sx={{
