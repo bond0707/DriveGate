@@ -4,6 +4,27 @@ All notable changes to the frontend are documented in this file.
 
 ---
 
+## [20-01-2026]
+
+### Fixed
+
+- **TOTP Paste on Mobile** - Fixed copy-paste functionality for TOTP input on mobile devices:
+  - Updated `handleOtpChange` to detect and handle multi-character input from mobile paste
+  - Moved `onPaste` handler from parent Box to each TextField's `inputProps` for proper event capture
+  - Changed `maxLength` from 1 to 6 to allow paste events to include all digits
+  - Files: `SetupTOTP.client.tsx`, `PublicUpload.client.tsx`
+
+### Changed
+
+- **Invalid Link Modal** - Redesigned as a centered modal (like Contact Us modal) instead of floating notification:
+  - Modal now appears centered on screen with backdrop blur
+  - Added "Got it" button for manual dismissal
+  - Click-to-dismiss backdrop support
+  - Auto-dismisses after 5 seconds (previously 8 seconds)
+  - File: `LandingPage.tsx`
+
+---
+
 ## [19-01-2026]
 
 ### Added

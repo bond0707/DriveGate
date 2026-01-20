@@ -147,7 +147,26 @@ export default function PublicUploadClient() {
     // --- TOTP Handlers ---
 
     const handleOtpChange = (index: number, value: string) => {
-        if (value.length > 1) value = value.slice(-1);
+        // Handle multi-character paste on mobile (onChange fires with all chars)
+        if (value.length > 1) {
+            const digits = value.replace(/\D/g, '').slice(0, 6);
+            if (digits.length > 1) {
+                const newOtp = [...otp];
+                digits.split('').forEach((char, i) => {
+                    if (i < 6) newOtp[i] = char;
+                });
+                setOtp(newOtp);
+                setVerifyError('');
+                const focusIndex = Math.min(digits.length, 5);
+                inputRefs.current[focusIndex]?.focus();
+                // Auto-submit if filled
+                if (newOtp.every(d => d !== '')) {
+                    verifyTotp(newOtp.join(''));
+                }
+                return;
+            }
+            value = value.slice(-1);
+        }
         if (!/^\d*$/.test(value)) return;
 
         if (value && index > 0) {
@@ -466,7 +485,7 @@ export default function PublicUploadClient() {
                                 Enter the 6-digit code provided by the owner.
                             </Typography>
 
-                            <Box sx={{ display: 'flex', gap: { xs: 1, sm: 1.5 }, justifyContent: 'center', mb: 3 }} onPaste={handlePaste}>
+                            <Box sx={{ display: 'flex', gap: { xs: 1, sm: 1.5 }, justifyContent: 'center', mb: 3 }}>
                                 {otp.map((digit, index) => (
                                     <motion.div
                                         key={index}
@@ -481,8 +500,9 @@ export default function PublicUploadClient() {
                                             onKeyDown={(e) => handleKeyDown(index, e)}
                                             disabled={isVerifying}
                                             inputProps={{
-                                                maxLength: 1,
+                                                maxLength: 6,
                                                 style: { textAlign: 'center', fontSize: '1.25rem', fontWeight: 600 },
+                                                onPaste: handlePaste,
                                             }}
                                             sx={{
                                                 width: { xs: 42, sm: 50 },

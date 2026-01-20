@@ -143,7 +143,22 @@ function TOTPSetupContent() {
     };
 
     const handleOtpChange = (index: number, value: string) => {
-        if (value.length > 1) value = value.slice(-1);
+        // Handle multi-character paste on mobile (onChange fires with all chars)
+        if (value.length > 1) {
+            const digits = value.replace(/\D/g, '').slice(0, 6);
+            if (digits.length > 1) {
+                const newOtp = [...otp];
+                digits.split('').forEach((char, i) => {
+                    if (i < 6) newOtp[i] = char;
+                });
+                setOtp(newOtp);
+                setError('');
+                const focusIndex = Math.min(digits.length, 5);
+                inputRefs.current[focusIndex]?.focus();
+                return;
+            }
+            value = value.slice(-1);
+        }
         if (!/^\d*$/.test(value)) return;
 
         // Only allow input if all previous boxes are filled
@@ -477,7 +492,6 @@ function TOTPSetupContent() {
 
                             <Box
                                 sx={{ display: 'flex', gap: { xs: 1, sm: 1.5 }, justifyContent: 'center', mb: 2 }}
-                                onPaste={handlePaste}
                             >
                                 {otp.map((digit, index) => (
                                     <motion.div
@@ -493,12 +507,13 @@ function TOTPSetupContent() {
                                             onKeyDown={(e) => handleKeyDown(index, e)}
                                             disabled={index > 0 && otp.slice(0, index).some(d => d === '')}
                                             inputProps={{
-                                                maxLength: 1,
+                                                maxLength: 6,
                                                 style: {
                                                     textAlign: 'center',
                                                     fontSize: '1.25rem',
                                                     fontWeight: 600,
                                                 },
+                                                onPaste: handlePaste,
                                             }}
                                             sx={{
                                                 width: { xs: 42, sm: 50 },
