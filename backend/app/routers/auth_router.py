@@ -20,9 +20,9 @@ from app.schemas.user import (
 auth_router = APIRouter()
 
 @auth_router.get('/google/login', status_code=status.HTTP_200_OK)
-async def google_login():
+async def google_login(force_consent: bool):
     try:
-        auth_url = google_auth_service.get_authorization_url()
+        auth_url = google_auth_service.get_authorization_url(force_consent)
         return {'auth_url': auth_url}
     except Exception as e:
         raise HTTPException(
@@ -47,7 +47,7 @@ async def google_callback(
                 status_code = status.HTTP_400_BAD_REQUEST,
                 detail      = 'Failed to get access token from google'
             )
-        
+
         # Verify Scopes - Check if user granted Drive permissions
         scope = tokens.get('scope', '')
         if "https://www.googleapis.com/auth/drive.file" not in scope:
@@ -74,6 +74,13 @@ async def google_callback(
         # Check if the user exists
         user = await user_service.get_user_by_email(db, email)
 
+        # If no refresh_token and user doesn't exist, they need to consent
+        if not refresh_token and user is None: # New user clicked on "sign in" option.
+            raise HTTPException(
+                status_code = status.HTTP_409_CONFLICT,
+                detail      = "Consent Required for this user."
+            )
+
         if user is None:
             # Create user in UserModel
             user_data = {
@@ -81,7 +88,6 @@ async def google_callback(
                 'username'    : username,
                 'picture_url' : picture_url
             }
-    
             try:
                 user = await user_service.create_user(db, user_data)
                 user_auth = await user_service.create_user_auth(

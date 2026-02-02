@@ -4,6 +4,47 @@ All notable changes to the frontend are documented in this file.
 
 ---
 
+## [03-02-2026]
+
+### Added
+
+- **Dual Google Auth Buttons** - Login page now has separate cards for Sign in and Sign up:
+  - "Sign in with Google" (`force_consent=false`) - Streamlined for returning users
+  - "Sign up with Google" (`force_consent=true`) - Full consent for new users
+  - Mobile header with logo + theme toggle positioned at top
+  - Files: `Login.client.tsx`
+
+- **New User Modal** - Shown when new users accidentally click "Sign in":
+  - Redirects from callback with `?new_user=true` query param
+  - Explains they need to sign up and connect their Drive
+  - Includes "Sign up with Google" button to start proper flow
+  - Backdrop blur effect, outlined "I'll do it later" button
+  - Files: `Login.client.tsx`, `AuthCallback.client.tsx`
+
+- **Multi-Tab Sign Out Sync** - Signing out in one tab automatically signs out all other tabs:
+  - Uses `storage` event listener on localStorage changes
+  - Detects token removal and redirects to login
+  - File: `AuthContext.tsx`
+
+- **Sign Out Confirmation Dialog** - Added confirmation modal before signing out:
+  - Prevents accidental sign-outs
+  - Consistent styling with delete account modal
+  - File: `Dashboard.client.tsx`
+
+### Changed
+
+- **Terminology**: All "logout" references renamed to "signOut" throughout codebase:
+  - Context: `logout()` → `signOut()`
+  - Dashboard: `handleLogout` → `handleSignOut`, `logoutDialogOpen` → `signOutDialogOpen`
+  - Menu item text: "Logout" → "Sign Out"
+  - Files: `AuthContext.tsx`, `Dashboard.client.tsx`
+
+- **Session Cleanup** - Sign out now removes all app-related localStorage keys:
+  - `token`, `totp_mode`, `folder_mode`, `skip_totp_setup`, `skip_folder_setup`
+  - File: `AuthContext.tsx`
+
+---
+
 ## [20-01-2026]
 
 ### Fixed

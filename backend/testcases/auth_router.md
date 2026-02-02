@@ -6,26 +6,46 @@ All protected endpoints require a valid **JWT access token** issued by this serv
 
 ---
 
-### **Test Case 1: Get Google Login URL**
+### **Test Case 1: Get Google Login URL (Returning Users)**
 
-This is the first step to initiate the OAuth 2.0 flow.
+This is the first step to initiate the OAuth 2.0 flow for **returning users**.
 
 * **HTTP Method:** `GET`
-* **Endpoint URL:** `http://localhost:8000/auth/google/login`
-* **Request Input:** None
+* **Endpoint URL:** `http://localhost:8000/auth/google/login?force_consent=false`
+* **Query Parameters:**
+  * `force_consent` (required): `true` or `false`
+    * `false` - Streamlined login with `prompt=select_account` (for returning users)
+    * `true` - Full consent screen with `prompt=consent` (for new users)
 * **Request Headers:** None
 * **Expected Successful Response (HTTP 200):**
   ```json
   {
-    "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=http://localhost:8000/auth/google/callback&response_type=code&scope=openid+email+profile+https://www.googleapis.com/auth/drive.file&access_type=offline&prompt=consent"
+    "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?...&prompt=select_account"
   }
   ```
 
 ---
 
+### **Test Case 1b: Get Google Login URL (New Users / Sign Up)**
+
+Initiates OAuth 2.0 flow with full consent for **new users** who need to grant Drive permissions.
+
+* **HTTP Method:** `GET`
+* **Endpoint URL:** `http://localhost:8000/auth/google/login?force_consent=true`
+* **Expected Successful Response (HTTP 200):**
+  ```json
+  {
+    "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?...&prompt=consent"
+  }
+  ```
+
+* **Note:** New users MUST use `force_consent=true` to grant Drive permissions and receive a `refresh_token`.
+
+---
+
 ### **Test Case 2: Handle OAuth Callback**
 
-This endpoint exchanges the authorization code from Google for tokens, creates/updates the user, and creates a Drive folder.
+This endpoint exchanges the authorization code from Google for tokens, creates/updates the user.
 
 * **HTTP Method:** `POST`
 * **Endpoint URL:** `http://localhost:8000/auth/google/callback`
@@ -65,6 +85,18 @@ This endpoint exchanges the authorization code from Google for tokens, creates/u
 
   * **`access_token`**: A JWT token your frontend must save and use for subsequent requests.
   * **`drive_folder_id`**: The ID of the "TOTP_UPLOADER" folder created in the user's Google Drive.
+
+* **Expected Error Response (HTTP 409) - New User Needs Consent:**
+  
+  If a new user used `force_consent=false` (clicked "Sign in" instead of "Sign up"), no `refresh_token` is provided:
+  
+  ```json
+  {
+    "detail": "Consent Required for this user."
+  }
+  ```
+  
+  The frontend should detect this and redirect the user to sign up with `force_consent=true`.
 
 ---
 
@@ -239,5 +271,11 @@ url_slug=<URL_SLUG>
 
 ### **Test Flow and Notes**
 
-1. **Manual Flow for Getting a Code:** To test, open the `auth_url` from **Test Case 1** in your browser, log in with `koffandaff@gmail.com` or `dhruvillearning@gmail.com`, and copy the `code` from the redirected URL.
-2. **Testing Protected Endpoints:** Endpoints `/auth/me` and `/auth/validate-token` require a valid JWT. You must complete **Test Case 2** first to obtain this token.
+1. **Sign In vs Sign Up:**
+   * **Returning users** should use **Test Case 1** (`force_consent=false`) for a streamlined experience.
+   * **New users** should use **Test Case 1b** (`force_consent=true`) to grant Drive permissions.
+   * If a new user mistakenly uses Sign In, they will receive a **409 CONFLICT** error, and the frontend will guide them to Sign Up.
+
+2. **Manual Flow for Getting a Code:** To test, open the `auth_url` from **Test Case 1** or **1b** in your browser, log in with your test account, and copy the `code` from the redirected URL.
+
+3. **Testing Protected Endpoints:** Endpoints `/auth/me` and `/auth/validate-token` require a valid JWT. You must complete **Test Case 2** first to obtain this token.

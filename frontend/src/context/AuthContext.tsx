@@ -20,7 +20,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
     login: (token: string, userData: User) => void;
-    logout: () => void;
+    signOut: () => void;
     checkAuth: () => Promise<void>;
 }
 
@@ -33,7 +33,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         checkAuth();
-    }, []);
+
+        // Listen for storage changes from other tabs (for multi-tab sign out sync)
+        const handleStorageChange = (event: StorageEvent) => {
+            if (event.key === 'token' && event.newValue === null) {
+                // Token was removed in another tab, sync sign out here
+                setUser(null);
+                router.push('/login');
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, [router]);
 
     const checkAuth = async () => {
         try {
@@ -73,8 +85,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const logout = () => {
+    const signOut = () => {
+        // Complete session cleanup - remove all app-related data
         localStorage.removeItem('token');
+        localStorage.removeItem('totp_mode');
+        localStorage.removeItem('folder_mode');
+        localStorage.removeItem('skip_totp_setup');
+        localStorage.removeItem('skip_folder_setup');
+
         setUser(null);
         router.push('/login');
     };
@@ -85,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: !!user,
             isLoading,
             login,
-            logout,
+            signOut,
             checkAuth
         }}>
             {children}

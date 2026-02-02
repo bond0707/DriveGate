@@ -41,8 +41,18 @@ function AuthCallbackContent() {
                 login(access_token, user);
             } catch (err: unknown) {
                 console.error('Login failed:', err);
-                const axiosErr = err as { response?: { data?: { detail?: string } } };
-                const msg = axiosErr.response?.data?.detail || 'Authentication failed. Please try again.';
+                const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
+                const status = axiosErr.response?.status;
+                const detail = axiosErr.response?.data?.detail || '';
+
+                // If 409 Conflict - new user clicked "Sign in" but needs to use "Sign up"
+                // Redirect to login page with query param to show helpful modal
+                if (status === 409 && detail.toLowerCase().includes('consent')) {
+                    router.push('/login?new_user=true');
+                    return;
+                }
+
+                const msg = detail || 'Authentication failed. Please try again.';
                 setError(msg);
             }
         };

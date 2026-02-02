@@ -54,7 +54,7 @@ export default function DashboardClient() {
     const router = useRouter();
     const theme = useTheme();
     const { mode } = useColorScheme();
-    const { user, logout, checkAuth, isLoading: authLoading } = useAuth();
+    const { user, signOut, checkAuth, isLoading: authLoading } = useAuth();
 
     // UI States
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -74,6 +74,9 @@ export default function DashboardClient() {
     const [thankYouDialogOpen, setThankYouDialogOpen] = useState(false);
     const [, setIsDeleting] = useState(false);
     const [deletedUsername, setDeletedUsername] = useState<string>('');
+
+    // Sign Out Confirmation State
+    const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
 
     // Profile Picture Retry State
     const [pfpRetryCount, setPfpRetryCount] = useState(0);
@@ -198,9 +201,14 @@ export default function DashboardClient() {
         setAnchorEl(null);
     };
 
-    const handleLogout = () => {
+    const handleSignOut = () => {
         handleClose();
-        logout();
+        setSignOutDialogOpen(true);
+    };
+
+    const handleConfirmSignOut = () => {
+        setSignOutDialogOpen(false);
+        signOut();
     };
 
     // --- Delete Account Handlers ---
@@ -219,7 +227,7 @@ export default function DashboardClient() {
             setDeleteDialogOpen(false);
             setThankYouDialogOpen(true);
             setTimeout(() => {
-                logout();
+                signOut();
             }, 3000);
         } catch (error) {
             console.error("Error deleting account:", error);
@@ -321,9 +329,9 @@ export default function DashboardClient() {
                         </Avatar>
                     </IconButton>
                     <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
-                        <MenuItem onClick={handleLogout}>
+                        <MenuItem onClick={handleSignOut}>
                             <Logout sx={{ mr: 1 }} fontSize="small" />
-                            Logout
+                            Sign Out
                         </MenuItem>
                         <Divider />
                         <MenuItem onClick={handleDeleteAccount} sx={{ color: 'error.main' }}>
@@ -742,6 +750,54 @@ export default function DashboardClient() {
                     </Button>
                 </DialogActions>
             </Dialog >
+
+            {/* Sign Out Confirmation Dialog */}
+            <Dialog
+                open={signOutDialogOpen}
+                onClose={() => setSignOutDialogOpen(false)}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            borderRadius: 3,
+                            maxWidth: 400,
+                        }
+                    }
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 2 }}>
+                    <Box sx={{
+                        p: 1,
+                        borderRadius: 2,
+                        bgcolor: '#E3F2FD',
+                        color: '#1565C0',
+                        display: 'flex'
+                    }}>
+                        <Logout />
+                    </Box>
+                    Sign Out?
+                </DialogTitle>
+                <DialogContent sx={{ pb: 3, px: 3 }}>
+                    <Typography color="text.secondary">
+                        Are you sure you want to sign out? You'll need to sign in again to access your dashboard.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5, pt: 0, gap: 1.5, flexDirection: { xs: 'column', sm: 'row' } }}>
+                    <Button
+                        variant="contained"
+                        onClick={handleConfirmSignOut}
+                        sx={{ borderRadius: 2, flex: 1, width: { xs: '100%', sm: 'auto' }, order: { xs: 1, sm: 2 } }}
+                    >
+                        Sign Out
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        onClick={() => setSignOutDialogOpen(false)}
+                        sx={{ borderRadius: 2, flex: 1, width: { xs: '100%', sm: 'auto' }, order: { xs: 2, sm: 1 } }}
+                    >
+                        Cancel
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Thank You Dialog */}
             < Dialog

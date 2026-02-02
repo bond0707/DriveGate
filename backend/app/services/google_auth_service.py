@@ -23,7 +23,7 @@ class GoogleAuthService:
         self.client_secret = settings.GOOGLE_CLIENT_SECRET
         self.redirect_uri = settings.GOOGLE_REDIRECT_URI
 
-    def get_authorization_url(self) -> str:
+    def get_authorization_url(self, force_consent) -> str:
         # defining Permissions
         scopes = [
             'openid',
@@ -40,8 +40,11 @@ class GoogleAuthService:
             f"response_type=code&"
             f"scope={'+'.join(scopes)}&" # joins all permission we defined
             f"access_type=offline&"  # Get refresh token for long term access
-            f"prompt=consent" # for consent purpose
         )
+        if force_consent:
+            auth_url += "prompt=consent" # For consent purpose
+        else:
+            auth_url += "prompt=select_account" # Streamlined login
 
         return auth_url
 
@@ -57,7 +60,8 @@ class GoogleAuthService:
 
         # Sending request to google [post]
         async with httpx.AsyncClient() as client:
-            print(token_data)
+            if settings.ENV_TYPE == "DEV":
+                print(token_data)
             response = await client.post(
                 self.GOOGLE_TOKEN_URL,
                 data=token_data,
