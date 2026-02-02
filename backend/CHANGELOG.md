@@ -4,7 +4,33 @@ All notable changes to the backend are documented in this file.
 
 ---
 
-## [03-02-2026]
+## [03-02-2026] - Upload Flow Optimization
+
+### Changed
+
+- **Access Token Optimization** - Moved Google access token generation from per-file to per-session:
+  - Access token and folder ID now fetched once during TOTP verification
+  - JWT upload token now contains: `url_slug`, `google_access_token`, `folder_id`
+  - Eliminates redundant DB queries and token refreshes during file uploads
+  - Files: `totp_router.py`, `url_slug_router.py`, `jwt_manager.py`
+
+### Security
+
+- **Upload Token TTL** - Upload tokens expire after 15 minutes (vs standard JWT expiration):
+
+  - Separate token type: `type: "upload"` vs `type: "access"`
+  - Short-lived to minimize exposure of embedded Google access token
+  - File: `jwt_manager.py`
+- **Token Type Separation** - Upload and user tokens are now distinguished:
+
+  - `verify_token()` accepts `expected_type` parameter
+  - Upload endpoint explicitly expects `type: "upload"`
+  - Prevents access tokens from being used for uploads (and vice versa)
+  - File: `dependencies.py`
+
+---
+
+## [03-02-2026] - Sign In/Sign Up Flow
 
 ### Fixed
 

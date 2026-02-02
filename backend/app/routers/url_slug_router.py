@@ -9,7 +9,6 @@ from fastapi.exceptions import HTTPException
 from fastapi import APIRouter, status, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.user_service import user_service
-from app.services.google_auth_service import google_auth_service
 from app.utils.dependencies import get_current_user, get_upload_token_payload
 
 url_slug_router = APIRouter()
@@ -77,6 +76,8 @@ async def get_upload_uri(
     payload: dict = Depends(get_upload_token_payload)
 ):
     url_slug = payload.get("url_slug")
+    google_access_token = payload.get("google_access_token")
+    folder_id = payload.get("folder_id")
 
     if not url_slug:
         raise HTTPException(
@@ -84,29 +85,17 @@ async def get_upload_uri(
             detail      = "Invalid token payload"
         )
 
-    credentials = await user_service.get_drive_credentials_by_url_slug(db, url_slug)
-
-    if credentials is None:
+    if not google_access_token:
         raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail      = "Drive credentials not found for this URL slug!"
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail      = "Missing access token in payload"
         )
-
-    folder_id, refresh_token = credentials
 
     if not folder_id:
         raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail      = "Drive Folder ID not found!"
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail      = "Missing folder ID in payload"
         )
-
-    if not refresh_token:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail      = "Google Refresh Token not found!"
-        )
-
-    google_access_token = await google_auth_service.get_access_token(refresh_token)
 
     headers = {
         "Authorization": f"Bearer {google_access_token}",

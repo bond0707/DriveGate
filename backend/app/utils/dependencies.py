@@ -68,8 +68,8 @@ async def get_upload_token_payload(
     # Extract token
     token = credentials.credentials
 
-    # Verify token
-    payload = jwt_manager.verify_token(token)
+    # Verify token (expecting upload type)
+    payload = jwt_manager.verify_token(token, expected_type="upload")
     if not payload:
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,

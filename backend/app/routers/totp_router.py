@@ -12,6 +12,7 @@ from app.services.totp_service import totp_service
 from app.services.user_service import user_service
 from app.utils.rate_limiter import totp_rate_limiter
 from app.utils.dependencies import get_current_user
+from app.services.google_auth_service import google_auth_service
 
 totp_router = APIRouter()
 
@@ -136,8 +137,33 @@ async def verify_totp(
         # This allows the user to make fresh attempts if they were close to being blocked
         totp_rate_limiter.reset_attempts(ip, request.url_slug)
         
+        # The process to get the access token for this upload session.
+        credentials = await user_service.get_drive_credentials_by_url_slug(db, request.url_slug)
+
+        if credentials is None:
+            raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail      = "Drive credentials not found for this URL slug!"
+            )
+
+        folder_id, refresh_token = credentials
+
+        if not folder_id:
+            raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail      = "Drive Folder ID not found!"
+            )
+
+        if not refresh_token:
+            raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail      = "Google Refresh Token not found!"
+            )
+
+        google_access_token = await google_auth_service.get_access_token(refresh_token)
+
         # Generate and return a one-time upload token
-        return {"upload_token": jwt_manager.create_upload_token(request.url_slug)}
+        return {"upload_token": jwt_manager.create_upload_token(request.url_slug, google_access_token, folder_id)}
     except HTTPException:
         raise
     except Exception as e:

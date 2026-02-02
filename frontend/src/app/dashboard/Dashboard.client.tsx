@@ -768,8 +768,8 @@ export default function DashboardClient() {
                     <Box sx={{
                         p: 1,
                         borderRadius: 2,
-                        bgcolor: '#E3F2FD',
-                        color: '#1565C0',
+                        bgcolor: '#BBDEFB',
+                        color: '#0D47A1',
                         display: 'flex'
                     }}>
                         <Logout />
