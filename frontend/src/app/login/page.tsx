@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import LoginClient from './Login.client';
 
 export const metadata: Metadata = {
@@ -12,5 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default function LoginPage() {
-  return <LoginClient />;
+  return (
+    <Suspense fallback={<div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>}>
+      <LoginClient />
+    </Suspense>
+  );
 }
