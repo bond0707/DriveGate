@@ -28,6 +28,21 @@ All notable changes to the backend are documented in this file.
   - Prevents access tokens from being used for uploads (and vice versa)
   - File: `dependencies.py`
 
+### Performance
+
+- **Combined DB Query** - Merged 2 separate queries into 1:
+  - New method: `get_totp_and_credentials_by_url_slug()`
+  - Fetches TOTP secret, folder_id, and refresh_token in single query
+  - Removed unused `get_drive_credentials_by_url_slug()` method
+  - File: `user_service.py`
+
+- **In-Memory Token Cache** - Cache Google access tokens for 55 minutes:
+  - Avoids repeated HTTP calls to Google (~300ms saved per cache hit)
+  - Cache key: hash of refresh token
+  - Auto-expires 5 minutes before Google's 60-minute limit
+  - Note: Use Redis in production for persistence (see README.md)
+  - File: `google_auth_service.py`
+
 ---
 
 ## [03-02-2026] - Sign In/Sign Up Flow

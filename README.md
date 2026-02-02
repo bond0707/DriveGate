@@ -42,8 +42,11 @@ A web app that lets users upload data to their own google drives without logging
 
 ## Future Updates
 
-* [ ] add actual user CRUD.
-* [ ] add multiple accounts from same providers functionality.
+* [ ] Add actual user CRUD.
+* [ ] Add multiple accounts from same providers functionality.
+* [ ] **Redis Integration** - Replace in-memory caches with Redis for:
+  - Rate limiter (TOTP brute-force protection)
+  - Google access token cache (currently 55-min in-memory TTL)
 
 ## Bugs To Fix
 

@@ -97,6 +97,39 @@ class UserService:
             return None
         except Exception as e:
             raise Exception(f"Failed to get TOTP Secret : {e}")
+
+    async def get_totp_and_credentials_by_url_slug(
+        self,
+        db: AsyncSession,
+        url_slug: str,
+    ) -> Optional[Tuple[str, str, str]]:
+        """
+        Gets TOTP secret, folder_id, and refresh_token in a single query.
+        Returns: (totp_secret, folder_id, refresh_token) or None if not found.
+        """
+        try:
+            query = (
+                select(
+                    UserDriveModel.totp_secret,
+                    UserDriveModel.folder_id,
+                    UserAuthModel.auth_secret
+                )
+                .join(UserAuthModel, UserDriveModel.user_auth_id == UserAuthModel.id)
+                .where(UserDriveModel.url_slug == url_slug)
+            )
+
+            result = await db.execute(query)
+            row = result.one_or_none()
+
+            if row is None:
+                return None
+
+            totp_secret = encryption_util.safe_decrypt(row.totp_secret) if row.totp_secret else None
+            refresh_token = encryption_util.safe_decrypt(row.auth_secret) if row.auth_secret else None
+            
+            return (totp_secret, row.folder_id, refresh_token)
+        except Exception as e:
+            raise Exception(f"Failed to get TOTP and credentials: {e}")
     
     async def get_auth_secret_by_user_id_drive_type(
         self,
@@ -118,31 +151,6 @@ class UserService:
             return None
         except Exception as e:
             raise Exception(f"Failed to get Auth Secret : {e}")
-
-    async def get_drive_credentials_by_url_slug(
-        self,
-        db: AsyncSession,
-        url_slug: str,
-    ) -> Optional[Tuple[str, str]]:
-        """Gets drive folder id and refresh token of a user from their url slug."""
-        try:
-            query = (
-                select(UserDriveModel.folder_id, UserAuthModel.auth_secret)
-                .join(
-                    UserAuthModel, 
-                    UserDriveModel.user_auth_id == UserAuthModel.id
-                )
-                .where(UserDriveModel.url_slug == url_slug)
-            )
-            result = await db.execute(query)
-            row = result.one_or_none()
-
-            if row is None:
-                return None
-            decrypted_auth_secret = encryption_util.safe_decrypt(row.auth_secret)
-            return (row.folder_id, decrypted_auth_secret)
-        except Exception as e:
-            raise Exception(f"Failed to get Drive Credentials: {e}")
 
     async def create_user(
         self,

@@ -1,6 +1,7 @@
 import httpx
+import time
 from fastapi import status
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from app.core.config import settings
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -17,11 +18,16 @@ class GoogleAuthService:
     DRIVE_API_VERSION = "v3"
     DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"
 
+    # Token cache TTL: 55 minutes (Google tokens last 60 min, 5 min buffer)
+    CACHE_TTL_SECONDS = 55 * 60
+
     def __init__(self):
         # from env
         self.client_id = settings.GOOGLE_CLIENT_ID
         self.client_secret = settings.GOOGLE_CLIENT_SECRET
         self.redirect_uri = settings.GOOGLE_REDIRECT_URI
+        # In-memory token cache: {refresh_token_hash: (access_token, expiry_timestamp)}
+        self._token_cache: Dict[str, Tuple[str, float]] = {}
 
     def get_authorization_url(self, force_consent) -> str:
         # defining Permissions
@@ -128,7 +134,25 @@ class GoogleAuthService:
             scopes        = [self.DRIVE_SCOPE, "openid", "email", "profile"],
         )
 
-    async def get_access_token(self, refresh_token: str) -> Dict[str, Any]:
+    async def get_access_token(self, refresh_token: str) -> str:
+        """
+        Gets a Google access token, using cache when available.
+        Cache key is hash of refresh_token to avoid storing sensitive data as key.
+        """
+        # Use hash of refresh token as cache key
+        cache_key = str(hash(refresh_token))
+        
+        # Check cache first
+        if cache_key in self._token_cache:
+            cached_token, expiry_time = self._token_cache[cache_key]
+            if time.time() < expiry_time:
+                # Cache hit - return cached token
+                return cached_token
+            else:
+                # Token expired, remove from cache
+                del self._token_cache[cache_key]
+
+        # Cache miss - fetch from Google
         token_data = {
             'refresh_token': refresh_token,
             'client_id': self.client_id,
@@ -140,6 +164,13 @@ class GoogleAuthService:
             response = await client.post(self.GOOGLE_TOKEN_URL, data=token_data)
             if response.status_code != 200:
                 raise Exception(f"Token refresh failed: {response.text}")
-            return response.json()["access_token"]
+            
+            access_token = response.json()["access_token"]
+            
+            # Cache the token with expiry time
+            expiry_time = time.time() + self.CACHE_TTL_SECONDS
+            self._token_cache[cache_key] = (access_token, expiry_time)
+            
+            return access_token
 
 google_auth_service = GoogleAuthService()

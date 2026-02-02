@@ -118,8 +118,13 @@ async def verify_totp(
         )
 
     try:
-        # Fetch the TOTP secret associated with the provided URL slug
-        totp_secret = await user_service.get_totp_secret_by_url_slug(db, request.url_slug)
+        # Fetch TOTP secret AND credentials in a single query (optimization)
+        data = await user_service.get_totp_and_credentials_by_url_slug(db, request.url_slug)
+
+        if data is None:
+            raise Exception(f"No data found for url_slug: {request.url_slug}")
+
+        totp_secret, folder_id, refresh_token = data
 
         if totp_secret is None:
             raise Exception(f"No totp_secret found for url_slug: {request.url_slug}")
@@ -134,19 +139,7 @@ async def verify_totp(
             )
 
         # On successful verification, reset the failure count for this IP + Slug
-        # This allows the user to make fresh attempts if they were close to being blocked
         totp_rate_limiter.reset_attempts(ip, request.url_slug)
-        
-        # The process to get the access token for this upload session.
-        credentials = await user_service.get_drive_credentials_by_url_slug(db, request.url_slug)
-
-        if credentials is None:
-            raise HTTPException(
-                status_code = status.HTTP_404_NOT_FOUND,
-                detail      = "Drive credentials not found for this URL slug!"
-            )
-
-        folder_id, refresh_token = credentials
 
         if not folder_id:
             raise HTTPException(
