@@ -7,6 +7,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import { api } from '@/lib/api';
 import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
+import SquircleLoader from '@/components/SquircleLoader';
 
 const MotionBox = motion.create(Box);
 const MotionPaper = motion.create(Paper);
@@ -16,6 +17,12 @@ export default function LoginClient() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [newUserModalOpen, setNewUserModalOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Set loading to false once component is mounted
+    useEffect(() => {
+        setIsLoading(false);
+    }, []);
 
     // Check if redirected from callback as a new user
     useEffect(() => {
@@ -36,6 +43,21 @@ export default function LoginClient() {
             console.error('Failed to get login URL:', error);
         }
     };
+
+    // Show loading state while hydrating - always dark background
+    if (isLoading) {
+        return (
+            <Box sx={{
+                minHeight: '100vh',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                bgcolor: '#121212',
+            }}>
+                <SquircleLoader size={50} color="#0D9488" />
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{

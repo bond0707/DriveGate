@@ -3,6 +3,9 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# VS Code configs
+.vscode/
+
 # Ignore node_modules in root and all subfolders
 node_modules/
 */node_modules/
