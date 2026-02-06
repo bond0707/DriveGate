@@ -12,7 +12,7 @@ from app.services.totp_service import totp_service
 from app.services.user_service import user_service
 from app.utils.rate_limiter import totp_rate_limiter
 from app.utils.dependencies import get_current_user
-from app.services.google_auth_service import google_auth_service
+from app.services.google_auth_service import google_auth_service, InvalidRefreshTokenError
 
 totp_router = APIRouter()
 
@@ -159,6 +159,11 @@ async def verify_totp(
         return {"upload_token": jwt_manager.create_upload_token(request.url_slug, google_access_token, folder_id)}
     except HTTPException:
         raise
+    except InvalidRefreshTokenError as e:
+        raise HTTPException(
+            status_code = status.HTTP_403_FORBIDDEN,
+            detail      = str(e)
+        )
     except Exception as e:
         raise HTTPException(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,

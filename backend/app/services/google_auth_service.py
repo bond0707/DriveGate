@@ -7,6 +7,11 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.oauth2.credentials import Credentials
 
+# Custom exception for invalid/expired refresh tokens
+class InvalidRefreshTokenError(Exception):
+    """Raised when a refresh token is invalid, expired, or revoked."""
+    pass
+
 # For GoogleAuth 2.0 and Drive Operations
 class GoogleAuthService:
     # Google Oauth2.0 endpoints
@@ -163,6 +168,20 @@ class GoogleAuthService:
         async with httpx.AsyncClient() as client:
             response = await client.post(self.GOOGLE_TOKEN_URL, data=token_data)
             if response.status_code != 200:
+                try:
+                    error_data = response.json()
+                    error_code = error_data.get("error", "")
+                    # unauthorized_client -> client creds changed or token revoked
+                    # invalid_grant -> token expired or revoked by user
+                    if error_code in ("unauthorized_client", "invalid_grant"):
+                        raise InvalidRefreshTokenError(
+                            "Your Google authorization has expired or been revoked. "
+                            "Please sign up again to restore access."
+                        )
+                except InvalidRefreshTokenError:
+                    raise
+                except Exception:
+                    pass  # Fall through to generic error
                 raise Exception(f"Token refresh failed: {response.text}")
             
             access_token = response.json()["access_token"]

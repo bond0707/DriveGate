@@ -230,11 +230,23 @@ export default function PublicUploadClient() {
         } catch (err: unknown) {
             console.error('Verification failed:', err);
             const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
+            const status = axiosErr.response?.status;
             const detail = axiosErr.response?.data?.detail;
+
+            if (status === 403) {
+                const reAuthMessage = typeof detail === 'string'
+                    ? detail
+                    : 'Your upload link is temporarily unavailable. You need to sign up again to restore access.';
+                setVerifyError(reAuthMessage);
+                setOtp(['', '', '', '', '', '']);
+                inputRefs.current[0]?.focus();
+                return;
+            }
+
             const errorMessage = typeof detail === 'string' ? detail : 'Invalid code. Please try again.';
 
             // Check if this is a rate limit error (429) and parse seconds
-            if (axiosErr.response?.status === 429 && typeof detail === 'string') {
+            if (status === 429 && typeof detail === 'string') {
                 // Parse "Too many attempts for this slug. Blocked for Xm Ys." or "...Blocked for Xs."
                 const timeMatch = detail.match(/Blocked for (?:(\d+)m\s*)?(\d+)s/);
                 if (timeMatch) {
