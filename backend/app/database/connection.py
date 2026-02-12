@@ -4,7 +4,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 settings = Settings()
-ssl_context = ssl.create_default_context(cafile = settings.DB_SERVICE_CA_PATH)
+ssl_context = ssl.create_default_context(cadata = settings.DB_CA_CERT)
 
 engine = create_async_engine(
     url  = settings.DATABASE_URL,

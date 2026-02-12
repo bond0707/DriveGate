@@ -6,8 +6,8 @@ class Settings(BaseSettings):
     CORS_ORIGIN: str
     BACKEND_API_KEY: str
 
+    DB_CA_CERT: str
     DATABASE_URL: str
-    DB_SERVICE_CA_PATH: str
     DB_FIELD_ENCRYPTION_KEY: str
  
     JWT_SECRET_KEY: str
@@ -29,4 +29,3 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
-settings.DB_SERVICE_CA_PATH = os.path.join(os.path.dirname(__file__), settings.DB_SERVICE_CA_PATH)
