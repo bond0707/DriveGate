@@ -1,10 +1,8 @@
-import httpx
 import time
+import httpx
 from fastapi import status
 from typing import Dict, Any, Tuple
 from app.core.config import settings
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 from google.oauth2.credentials import Credentials
 
 # Custom exception for invalid/expired refresh tokens
@@ -15,13 +13,10 @@ class InvalidRefreshTokenError(Exception):
 # For GoogleAuth 2.0 and Drive Operations
 class GoogleAuthService:
     # Google Oauth2.0 endpoints
+    DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"
     GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
     GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
     GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
-
-    # Google Drive api
-    DRIVE_API_VERSION = "v3"
-    DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"
 
     # Token cache TTL: 55 minutes (Google tokens last 60 min, 5 min buffer)
     CACHE_TTL_SECONDS = 55 * 60
@@ -79,11 +74,10 @@ class GoogleAuthService:
                 headers={'Content-Type':'application/x-www-form-urlencoded'}
             )
 
-            # Checking if rizz worked
+            # Checking if it worked
             if response.status_code != status.HTTP_200_OK:
-                # Kirtan's fault not mine (yeah sure mf)
                 error_details = response.json().get("error_description", 'Unkown error')
-                raise Exception(f'Token Exchange Failed Because of Dhruvil : {error_details}')
+                raise Exception(f'Token Exchange Failed : {error_details}')
 
             return response.json()
 
@@ -95,38 +89,6 @@ class GoogleAuthService:
             response = await client.get(self.GOOGLE_USERINFO_URL, headers=headers)
             response.raise_for_status() # raise excpetion for bad status
             return response.json()
-
-    # Creating drive folder as we discussed chigga change if you want to
-    async def create_drive_folder(self, folder_name: str, access_token: str) -> str:
-        try:
-            # Create credentials object from access token
-            credentials = Credentials(token = access_token)
-
-            # Build google Drive Service Client
-            drive_service = build(
-                'drive',
-                self.DRIVE_API_VERSION,
-                credentials = credentials
-            )
-
-            folder_metadata = {
-                'name': folder_name,
-                'mimeType': 'application/vnd.google-apps.folder',
-                'description': 'TOTP UPLOADER FILES'
-            }
-            # Create folder
-            # IDK THIS PART AI USED (THEN WHY DIDNT YOU LET ME DO IT NIGAA I HAD IT DONE IN MY PC!!!!)
-            folder = drive_service.files().create(
-                body   = folder_metadata,
-                fields = 'id'  # Only return the folder ID
-            ).execute()
-
-            return folder.get('id')
-
-        except HttpError as e:
-            raise Exception(f'Google Drive API Error : {e}')
-        except Exception as er:
-            raise Exception(f'Failed to Create Drive Folder : {er}')
 
     # Chal have longterm mate olu kari dau credentials
     def create_google_credentials(self, token_data: Dict[str, Any]) -> Credentials:

@@ -96,7 +96,7 @@ export default function SetupFolderClient() {
         setError('');
 
         try {
-            await api.post('/auth/me/update-drive-folder', {
+            await api.patch('/drive/folder', {
                 folder_name: folderName.trim(),
                 drive_type: 'GOOGLE_DRIVE'
             });

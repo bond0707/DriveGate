@@ -16,7 +16,11 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
+    DialogContentText,
     DialogActions,
+    Tooltip,
+    InputAdornment,
+
 } from '@mui/material';
 import {
     CloudUpload,
@@ -27,6 +31,10 @@ import {
     Image as ImageIcon,
     Warning,
     Lock,
+    Folder,
+    CreateNewFolder,
+
+    FolderOpen,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
@@ -44,6 +52,7 @@ interface FileStatus {
     status: 'pending' | 'uploading' | 'success' | 'error';
     progress: number;
     error?: string;
+    relativePath?: string;
 }
 
 export default function PublicUploadClient() {
@@ -71,6 +80,21 @@ export default function PublicUploadClient() {
     const [isUploading, setIsUploading] = useState(false);
     const [backWarningOpen, setBackWarningOpen] = useState(false);
 
+    // Folder State
+    const [defaultFolderId, setDefaultFolderId] = useState<string | null>(null);
+    const [defaultFolderName, setDefaultFolderName] = useState<string>('Upload Folder');
+    const [targetFolderId, setTargetFolderId] = useState<string | null>(null); // null = default folder
+    const [targetFolderName, setTargetFolderName] = useState<string>('Upload Folder');
+    const [newFolderName, setNewFolderName] = useState('');
+    const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+    const [showNewFolderInput, setShowNewFolderInput] = useState(false);
+    const [hasCreatedFolder, setHasCreatedFolder] = useState(false); // Only allow one folder creation per session
+    const [folderUploadDialogOpen, setFolderUploadDialogOpen] = useState(false);
+    const [pendingFolderFiles, setPendingFolderFiles] = useState<FileStatus[]>([]);
+    const [pendingFolderName, setPendingFolderName] = useState<string>('');
+    const folderIdCacheRef = useRef<Map<string, string>>(new Map());
+    const newFolderRowRef = useRef<HTMLDivElement | null>(null);
+
     // Rate Limit Countdown State
     const [rateLimitSeconds, setRateLimitSeconds] = useState<number | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -82,7 +106,7 @@ export default function PublicUploadClient() {
         const validateSlug = async () => {
             try {
                 // Call backend to check if this slug exists
-                await api.get(`/url/validate-slug?url_slug=${slug}`);
+                await api.post('/url/slug/validate', { url_slug: slug });
                 setIsPageLoading(false);
             } catch (err: unknown) {
                 console.error('Slug validation failed:', err);
@@ -95,6 +119,25 @@ export default function PublicUploadClient() {
             validateSlug();
         }
     }, [slug, router]);
+
+    // Click-outside handler to dismiss the new folder input
+    useEffect(() => {
+        if (!showNewFolderInput) return;
+
+        const handleClickOutside = (e: MouseEvent) => {
+            if (
+                newFolderRowRef.current &&
+                !newFolderRowRef.current.contains(e.target as Node) &&
+                !isCreatingFolder
+            ) {
+                setShowNewFolderInput(false);
+                setNewFolderName('');
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showNewFolderInput, isCreatingFolder]);
 
     // Focus first input on mount
     useEffect(() => {
@@ -225,6 +268,23 @@ export default function PublicUploadClient() {
             });
 
             setUploadToken(response.data.upload_token);
+
+            // Extract folder info from the upload token payload if available
+            try {
+                const tokenPayload = JSON.parse(atob(response.data.upload_token.split('.')[1]));
+                if (tokenPayload.folder_id) {
+                    setDefaultFolderId(tokenPayload.folder_id);
+                    setTargetFolderId(null); // null means use default
+                }
+                // Use folder name from payload if set, otherwise keep default
+                if (tokenPayload.folder_name) {
+                    setDefaultFolderName(tokenPayload.folder_name);
+                    setTargetFolderName(tokenPayload.folder_name);
+                }
+            } catch {
+                // If token parsing fails, keep defaults
+            }
+
             setStep('upload');
 
         } catch (err: unknown) {
@@ -269,14 +329,38 @@ export default function PublicUploadClient() {
     // --- Upload Handlers ---
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
-        setFiles(prev => [
-            ...prev,
-            ...acceptedFiles.map(file => ({
+        // react-dropzone's file-selector uses entry.fullPath which starts with /
+        // We must strip the leading / to prevent ghost folder entries
+        const normalizePath = (p: string) => p.replace(/^\.?\//, '');
+
+        // For folder drops, path includes folder structure e.g. "myFolder/sub/file.txt"
+        const isFolderDrop = acceptedFiles.some(f => {
+            const filePath = normalizePath((f as File & { path?: string }).path || '');
+            return filePath.includes('/');
+        });
+
+        const newFiles: FileStatus[] = acceptedFiles.map(file => {
+            const rawPath = (file as File & { path?: string }).path || '';
+            const cleanPath = normalizePath(rawPath);
+            return {
                 file,
                 status: 'pending' as const,
-                progress: 0
-            }))
-        ]);
+                progress: 0,
+                // Only set relativePath for folder-dropped files (path contains /)
+                relativePath: cleanPath.includes('/') ? cleanPath : undefined,
+            };
+        });
+
+        if (isFolderDrop) {
+            // Extract root folder name from the first file's path
+            const firstPath = normalizePath((acceptedFiles[0] as File & { path?: string }).path || '');
+            const rootFolderName = firstPath.split('/').filter(Boolean)[0] || 'Selected folder';
+            setPendingFolderName(rootFolderName);
+            setPendingFolderFiles(newFiles);
+            setFolderUploadDialogOpen(true);
+        } else {
+            setFiles(prev => [...prev, ...newFiles]);
+        }
     }, []);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -288,18 +372,106 @@ export default function PublicUploadClient() {
         setFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    const uploadSingleFile = async (fileIndex: number, signal?: AbortSignal) => {
+    // Create a folder in Google Drive via the backend
+    const createFolder = async (folderName: string, parentFolderId?: string, signal?: AbortSignal): Promise<string> => {
+        const response = await api.post('/drive/folder', {
+            folder_name: folderName,
+            parent_folder_id: parentFolderId || null,
+        }, {
+            headers: { 'Authorization': `Bearer ${uploadToken}` },
+            signal,
+        });
+        return response.data.folder_id;
+    };
+
+    // Build folder tree and create all necessary subfolders for folder-uploaded files
+    const createFolderTree = async (filesToUpload: FileStatus[], signal?: AbortSignal): Promise<Map<string, string>> => {
+        const cache = folderIdCacheRef.current;
+        // Collect all unique folder paths
+        const folderPaths = new Set<string>();
+        for (const f of filesToUpload) {
+            if (f.relativePath) {
+                const parts = f.relativePath.split('/');
+                // Remove the filename, keep only folder parts
+                parts.pop();
+                for (let i = 1; i <= parts.length; i++) {
+                    folderPaths.add(parts.slice(0, i).join('/'));
+                }
+            }
+        }
+
+        // Sort by depth so parents are created first
+        const sorted = Array.from(folderPaths).sort((a, b) => a.split('/').length - b.split('/').length);
+
+        for (const path of sorted) {
+            if (cache.has(path)) continue;
+            const parts = path.split('/');
+            const folderName = parts[parts.length - 1];
+            const parentPath = parts.slice(0, -1).join('/');
+            const parentId = parentPath ? cache.get(parentPath) : (targetFolderId || defaultFolderId || undefined);
+
+            const folderId = await createFolder(folderName, parentId, signal);
+            cache.set(path, folderId);
+        }
+
+        return cache;
+    };
+
+    // Handle creating a new named folder from the UI
+    const handleCreateNewFolder = async () => {
+        if (!newFolderName.trim()) return;
+        setIsCreatingFolder(true);
+        try {
+            // Create the new folder inside the current destination (targetFolderId or defaultFolderId)
+            const parentId = targetFolderId || defaultFolderId || undefined;
+            const folderId = await createFolder(newFolderName.trim(), parentId);
+            setTargetFolderId(folderId);
+            setTargetFolderName(newFolderName.trim());
+            setNewFolderName('');
+            setShowNewFolderInput(false);
+            setHasCreatedFolder(true); // Only allow one folder creation per session
+        } catch (err) {
+            console.error('Failed to create folder:', err);
+        } finally {
+            setIsCreatingFolder(false);
+        }
+    };
+
+    const handleConfirmFolderUpload = () => {
+        setFiles(prev => [...prev, ...pendingFolderFiles]);
+        setPendingFolderFiles([]);
+        setFolderUploadDialogOpen(false);
+    };
+
+    const handleCancelFolderUpload = () => {
+        setPendingFolderFiles([]);
+        setPendingFolderName('');
+        setFolderUploadDialogOpen(false);
+    };
+
+    const uploadSingleFile = async (fileIndex: number, folderMap: Map<string, string>, signal?: AbortSignal) => {
         const fileStatus = files[fileIndex];
         if (fileStatus.status === 'success') return;
 
         setFiles(prev => prev.map((f, i) => i === fileIndex ? { ...f, status: 'uploading', progress: 0 } : f));
 
         try {
+            // Determine the target folder for this file
+            let parentFolderId: string | null = targetFolderId;
+            if (fileStatus.relativePath) {
+                const parts = fileStatus.relativePath.split('/');
+                parts.pop(); // remove filename
+                if (parts.length > 0) {
+                    const folderPath = parts.join('/');
+                    parentFolderId = folderMap.get(folderPath) || parentFolderId;
+                }
+            }
+
             // 1. Get Signed URL
-            const linkResponse = await api.post('/url/get-upload-link', {
+            const linkResponse = await api.post('/drive/upload-link', {
                 file_name: fileStatus.file.name,
-                file_size: fileStatus.file.size,
                 mime_type: fileStatus.file.type || 'application/octet-stream',
+                parent_folder_id: parentFolderId || undefined,
             }, {
                 headers: { 'Authorization': `Bearer ${uploadToken}` },
                 signal,
@@ -356,13 +528,23 @@ export default function PublicUploadClient() {
 
         setIsUploading(true);
 
-        // Filter pending files and map them to their current index
-        const pendingFiles = files
-            .map((f, index) => ({ ...f, originalIndex: index }))
-            .filter(f => f.status !== 'success');
+        try {
+            // First, create any needed subfolders for folder-uploaded files
+            const folderMap = await createFolderTree(
+                files.filter(f => f.status !== 'success'),
+                signal
+            );
 
-        // Upload in parallel, passing the abort signal
-        await Promise.all(pendingFiles.map(f => uploadSingleFile(f.originalIndex, signal)));
+            // Filter pending files and map them to their current index
+            const pendingFiles = files
+                .map((f, index) => ({ ...f, originalIndex: index }))
+                .filter(f => f.status !== 'success');
+
+            // Upload in parallel, passing the abort signal and folder map
+            await Promise.all(pendingFiles.map(f => uploadSingleFile(f.originalIndex, folderMap, signal)));
+        } catch (err) {
+            console.error('Upload batch error:', err);
+        }
 
         setIsUploading(false);
         abortControllerRef.current = null;
@@ -380,6 +562,12 @@ export default function PublicUploadClient() {
         setOtp(['', '', '', '', '', '']);
         setFiles([]);
         setUploadToken(null);
+        setTargetFolderId(null);
+        setTargetFolderName(defaultFolderName);
+        setShowNewFolderInput(false);
+        setNewFolderName('');
+        setHasCreatedFolder(false);
+        folderIdCacheRef.current.clear();
     };
 
     // Check completion
@@ -568,32 +756,114 @@ export default function PublicUploadClient() {
                             <Typography variant="h6" fontWeight={700} gutterBottom sx={{ ms: 2 }}>
                                 Upload Files
                             </Typography>
-                            <Typography color="text.secondary" variant="body2" sx={{ mb: 3 }}>
-                                Files will be encrypted and stored securely.
+                            <Typography color="text.secondary" variant="body2" sx={{ mb: 2 }}>
+                                Files and folders will be uploaded directly in the folder given below.
                             </Typography>
+
+                            {/* Folder bar: shows current target folder and lets user create new one */}
+                            {!isUploading && !isTransitioningToSuccess && (
+                                <Box sx={{ mx: 2, mb: 2 }}>
+                                    <Box sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1,
+                                        p: 1.5,
+                                        borderRadius: 2,
+                                        bgcolor: 'action.hover',
+                                        minHeight: 44,
+                                    }}>
+
+                                        <FolderOpen sx={{ color: '#00897B', fontSize: 20 }} />
+                                        <Typography variant="body2" fontWeight={500} sx={{ flex: 1 }}>
+                                            {targetFolderName}
+                                        </Typography>
+                                        {!showNewFolderInput && !hasCreatedFolder && (
+                                            <Tooltip title="Create new folder">
+                                                <IconButton size="small" sx={{ color: '#00897B' }} onClick={() => setShowNewFolderInput(true)}>
+                                                    <CreateNewFolder fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                    </Box>
+
+                                    {/* Inline new folder input */}
+                                    <AnimatePresence>
+                                        {showNewFolderInput && (
+                                            <motion.div
+                                                ref={newFolderRowRef}
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                            >
+                                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, mb: 0.5, display: 'block' }}>
+                                                    Create a new folder inside &ldquo;{targetFolderName}&rdquo; to upload into
+                                                </Typography>
+                                                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                                                    <TextField
+                                                        size="small"
+                                                        fullWidth
+                                                        placeholder="Folder name"
+                                                        value={newFolderName}
+                                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') handleCreateNewFolder();
+                                                        }}
+                                                        disabled={isCreatingFolder}
+                                                        autoFocus
+                                                        InputProps={{
+                                                            startAdornment: (
+                                                                <InputAdornment position="start">
+                                                                    <Folder fontSize="small" sx={{ color: '#00897B' }} />
+                                                                </InputAdornment>
+                                                            ),
+                                                        }}
+                                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                                                    />
+                                                    <Button
+                                                        size="small"
+                                                        variant="contained"
+                                                        onClick={handleCreateNewFolder}
+                                                        disabled={!newFolderName.trim() || isCreatingFolder}
+                                                        sx={{
+                                                            borderRadius: 2,
+                                                            bgcolor: '#00897B',
+                                                            color: 'white',
+                                                            minWidth: 80,
+                                                            '&:hover': { bgcolor: '#00695C' },
+                                                        }}
+                                                    >
+                                                        {isCreatingFolder ? <SquircleLoader size={16} color="white" /> : 'Create'}
+                                                    </Button>
+                                                </Box>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </Box>
+                            )}
 
                             {/* Hide dropzone when uploading or when all files are uploaded */}
                             {!isUploading && !isTransitioningToSuccess && (
-                                <Box
-                                    {...getRootProps()}
-                                    sx={{
-                                        border: '2px dashed',
-                                        borderColor: isDragActive ? 'primary.main' : 'divider',
-                                        borderRadius: 3,
-                                        bgcolor: isDragActive ? 'action.hover' : 'transparent',
-                                        p: 4,
-                                        textAlign: 'center',
-                                        cursor: 'pointer',
-                                        m: 2,
-                                        transition: 'all 0.2s',
-                                        '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' }
-                                    }}
-                                >
-                                    <input {...getInputProps()} />
-                                    <CloudUpload sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-                                    <Typography fontWeight={500}>
-                                        Drag & drop files here, or click to select
-                                    </Typography>
+                                <Box sx={{ m: 2 }}>
+                                    <Box
+                                        {...getRootProps()}
+                                        sx={{
+                                            border: '2px dashed',
+                                            borderColor: isDragActive ? 'primary.main' : 'divider',
+                                            borderRadius: 3,
+                                            bgcolor: isDragActive ? 'action.hover' : 'transparent',
+                                            p: 4,
+                                            textAlign: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' }
+                                        }}
+                                    >
+                                        <input {...getInputProps()} />
+                                        <CloudUpload sx={{ fontSize: 48, color: '#00897B', mb: 2 }} />
+                                        <Typography fontWeight={500}>
+                                            Drag & drop files or folders here, or click to select files.
+                                        </Typography>
+                                    </Box>
                                 </Box>
                             )}
 
@@ -637,7 +907,7 @@ export default function PublicUploadClient() {
                                                 }}
                                             >
                                                 <Box sx={{ display: 'flex', alignItems: 'center', p: 1.5, pr: 6 }}>
-                                                    <ListItemIcon sx={{ minWidth: 40 }}>
+                                                    <ListItemIcon sx={{ color: "#00897B", minWidth: 40 }}>
                                                         {fileStatus.status === 'success' ? (
                                                             <CheckCircle color="success" />
                                                         ) : fileStatus.status === 'error' ? (
@@ -648,7 +918,7 @@ export default function PublicUploadClient() {
                                                     </ListItemIcon>
                                                     <Box sx={{ flex: 1, minWidth: 0 }}>
                                                         <Typography noWrap fontWeight={500} fontSize="0.9rem">
-                                                            {fileStatus.file.name}
+                                                            {fileStatus.relativePath || fileStatus.file.name}
                                                         </Typography>
                                                         <Typography variant="caption" color="text.secondary">
                                                             {fileStatus.status === 'success' ? 'Uploaded' :
@@ -718,7 +988,10 @@ export default function PublicUploadClient() {
                                         },
                                     }}
                                 >
-                                    {isUploading ? 'Uploading...' : 'Upload All'}
+                                    {isUploading
+                                        ? 'Uploading...'
+                                        : `Upload ${files.filter(f => f.status !== 'success').length} file${files.filter(f => f.status !== 'success').length !== 1 ? 's' : ''}`
+                                    }
                                 </Button>
                             </Box>
                         </MotionPaper>
@@ -766,6 +1039,12 @@ export default function PublicUploadClient() {
                                 setOtp(['', '', '', '', '', '']);
                                 setFiles([]);
                                 setUploadToken(null);
+                                setTargetFolderId(null);
+                                setTargetFolderName(defaultFolderName);
+                                setShowNewFolderInput(false);
+                                setNewFolderName('');
+                                setHasCreatedFolder(false);
+                                folderIdCacheRef.current.clear();
                             }}>
                                 Upload More
                             </Button>
@@ -797,6 +1076,43 @@ export default function PublicUploadClient() {
                     </Button>
                     <Button variant="contained" color="error" onClick={handleConfirmLeave} sx={{ borderRadius: 2, flex: 1 }}>
                         Leave
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Folder Upload Confirmation Dialog */}
+            <Dialog
+                open={folderUploadDialogOpen}
+                onClose={handleCancelFolderUpload}
+                slotProps={{ paper: { sx: { borderRadius: 3, maxWidth: 400 } } }}
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 2 }}>
+                    <Box sx={{ p: 1, borderRadius: 2, bgcolor: '#E8F5E9', color: '#00897B', display: 'flex' }}>
+                        <Folder />
+                    </Box>
+                    Upload &ldquo;{pendingFolderName}&rdquo;?
+                </DialogTitle>
+                <DialogContent sx={{ pb: 3 }}>
+                    <DialogContentText color="text.secondary">
+                        This will upload the entire &ldquo;{pendingFolderName}&rdquo; folder, including all its sub‑folders and files to your cloud drive.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5, pt: 0, gap: 1.5 }}>
+                    <Button variant="outlined" onClick={handleCancelFolderUpload} sx={{ borderRadius: 2, flex: 1 }}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleConfirmFolderUpload}
+                        sx={{
+                            borderRadius: 2,
+                            flex: 1,
+                            bgcolor: '#00897B',
+                            color: '#FFFFFF',
+                            '&:hover': { bgcolor: '#00695C' },
+                        }}
+                    >
+                        Upload
                     </Button>
                 </DialogActions>
             </Dialog>

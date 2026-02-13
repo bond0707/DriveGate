@@ -69,7 +69,7 @@ function TOTPSetupContent() {
             try {
                 // For rescan mode, fetch existing TOTP secret from backend
                 // For reset or first-time setup, generate a new secret
-                const endpoint = currentMode === 'rescan' ? '/totp/rescan' : '/totp/setup';
+                const endpoint = currentMode === 'rescan' ? '/totp/secret/current' : '/totp/secret';
                 const response = await api.get(endpoint);
 
                 setSecret(response.data.totp_secret);
@@ -211,7 +211,7 @@ function TOTPSetupContent() {
         setError('');
 
         try {
-            await api.post('/totp/store', {
+            await api.post('/totp/secret', {
                 user_totp: code,
                 user_totp_secret: secret,
             });

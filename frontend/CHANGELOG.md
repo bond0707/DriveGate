@@ -4,112 +4,64 @@ All notable changes to the frontend are documented in this file.
 
 ---
 
-## [03-02-2026]
+## [14-02-2026] - Public Upload Page UX Overhaul
 
 ### Added
 
-- **Dual Google Auth Buttons** - Login page now has separate cards for Sign in and Sign up:
-  - "Sign in with Google" (`force_consent=false`) - Streamlined for returning users
-  - "Sign up with Google" (`force_consent=true`) - Full consent for new users
-  - Mobile header with logo + theme toggle positioned at top
-  - Files: `Login.client.tsx`
+- **Drag‑and‑Drop Folder Upload** — Folders can now be dragged directly into the dropzone (like GitHub):
+  - Uses `DataTransferItem.webkitGetAsEntry()` via react‑dropzone under the hood
+  - No native browser dialog — folder structure is read silently
+  - `onDrop` detects folder drops via `file.path` and shows a custom confirmation dialog
+  - Paths are normalized (strips leading `/` and `./` from react‑dropzone) to prevent ghost folder entries
+  - File: `PublicUpload.client.tsx`
 
-- **New User Modal** - Shown when new users accidentally click "Sign in":
-  - Redirects from callback with `?new_user=true` query param
-  - Explains they need to sign up and connect their Drive
-  - Includes "Sign up with Google" button to start proper flow
-  - Backdrop blur effect, outlined "I'll do it later" button
-  - Files: `Login.client.tsx`, `AuthCallback.client.tsx`
+- **Folder Upload Confirmation Dialog** — When a folder is dropped, a custom MUI dialog asks for confirmation:
+  - Shows folder name, upload/cancel buttons
+  - Teal accent color (`#00897B`) on icon and upload button
+  - File: `PublicUpload.client.tsx`
 
-- **Multi-Tab Sign Out Sync** - Signing out in one tab automatically signs out all other tabs:
-  - Uses `storage` event listener on localStorage changes
-  - Detects token removal and redirects to login
-  - File: `AuthContext.tsx`
+- **Leave Confirmation Dialog** — Replaced native `window.confirm()` with a styled MUI dialog:
+  - Appears when clicking the back arrow during an active upload
+  - Warning icon with amber accent, "Stay" / "Leave" buttons
+  - File: `PublicUpload.client.tsx`
 
-- **Sign Out Confirmation Dialog** - Added confirmation modal before signing out:
-  - Prevents accidental sign-outs
-  - Consistent styling with delete account modal
-  - File: `Dashboard.client.tsx`
+- **`SquircleLoader`** — Replaced `CircularProgress` spinner with custom animated loader for folder creation feedback:
+  - File: `PublicUpload.client.tsx`
 
 ### Changed
 
-- **Terminology**: All "logout" references renamed to "signOut" throughout codebase:
-  - Context: `logout()` → `signOut()`
-  - Dashboard: `handleLogout` → `handleSignOut`, `logoutDialogOpen` → `signOutDialogOpen`
-  - Menu item text: "Logout" → "Sign Out"
-  - Files: `AuthContext.tsx`, `Dashboard.client.tsx`
-
-- **Session Cleanup** - Sign out now removes all app-related localStorage keys:
-  - `token`, `totp_mode`, `folder_mode`, `skip_totp_setup`, `skip_folder_setup`
-  - File: `AuthContext.tsx`
-
----
-
-## [20-01-2026]
+- **Destination Folder Section** — Increased label size from `caption` to `body2` with `fontWeight: 500`
+- **Upload Info Text** — Updated to: "Files and folders will be uploaded directly in the folder given below."
+- **Dropzone Text** — Updated to: "Drag & drop files or folders here, or click to select files."
+- **Cloud Upload Icon** — Changed color from `text.disabled` to `#00897B`
+- **Create Folder Icon** — Added `#00897B` color to the `CreateNewFolder` icon button
+- **Folder Input Icon** — Changed color from `text.secondary` to `#00897B`
+- **File List Icon** — Added `#00897B` color to the file `ListItemIcon`
+- **Folder Dialog Icon** — Updated from `#2E7D32` to `#00897B`
+- **Folder Dialog Upload Button** — Set text color to `#FFFFFF` (always white)
+- File: `PublicUpload.client.tsx`
 
 ### Fixed
 
-- **TOTP Paste on Mobile** - Fixed copy-paste functionality for TOTP input on mobile devices:
-  - Updated `handleOtpChange` to detect and handle multi-character input from mobile paste
-  - Moved `onPaste` handler from parent Box to each TextField's `inputProps` for proper event capture
-  - Changed `maxLength` from 1 to 6 to allow paste events to include all digits
-  - Files: `SetupTOTP.client.tsx`, `PublicUpload.client.tsx`
+- **Folder Created in Wrong Location** — New folders were being created at Google Drive root instead of inside the destination folder:
+  - Re‑added `defaultFolderId` state (parsed from JWT upload token)
+  - `handleCreateNewFolder` now passes `targetFolderId || defaultFolderId` as parent
+  - `createFolderTree` also uses `defaultFolderId` as fallback
+  - File: `PublicUpload.client.tsx`
 
-### Changed
+- **Duplicate Subfolder Bug** — Uploading a nested folder created ghost subfolders in Drive:
+  - Root cause: react‑dropzone's `file-selector` uses `entry.fullPath` which starts with `/`
+  - Path splitting on `/` produced an empty‑string segment, creating a nameless folder
+  - Fix: `normalizePath` strips leading `/` and `./` before storing `relativePath`
+  - File: `PublicUpload.client.tsx`
 
-- **Invalid Link Modal** - Redesigned as a centered modal (like Contact Us modal) instead of floating notification:
-  - Modal now appears centered on screen with backdrop blur
-  - Added "Got it" button for manual dismissal
-  - Click-to-dismiss backdrop support
-  - Auto-dismisses after 5 seconds (previously 8 seconds)
-  - File: `LandingPage.tsx`
+### Removed
 
----
-
-## [19-01-2026]
-
-### Added
-
-- **Dynamic Page Titles** - Page titles now change based on context:
-  - `setup-totp`: Shows "Rescan TOTP", "Reset TOTP", or "Setup TOTP" based on mode
-  - `setup-folder`: Shows "Update Folder" or "Setup Folder" based on mode
-  - `setup-link`: Shows "Update Upload Link" or "Setup Upload Link" based on mode
-
-### Changed
-
-- **Landing Page Text Justification** - Added `textAlign: justify` for mobile across all sections:
-  - `HeroSection.tsx` - Hero description paragraph
-  - `WhatIsSection.tsx` - Main description
-  - `ProblemSolutionSection.tsx` - Problem and solution descriptions
-  - `FeaturesSection.tsx` - Feature card descriptions
-  - `UseCasesSection.tsx` - Subtitle and use case descriptions
-  - `TrustSection.tsx` - Zero Trust and permission descriptions
-  - `FAQSection.tsx` - FAQ answer text
-- **Hero Section Styling**:
-  - Increased `lineHeight` from 1.1 to 1.3 to prevent text clipping
-  - Increased TOTP animation width on mobile (240→300, 280→340)
-  - Increased TOTP animation padding on mobile (2.5→3)
-- **Contact Modal** - Balanced margins (`mt: 2.5, mb: 2.5`) for email text
-- **TOTP Secret Display** - Split 32-char secret into two 16-char lines on mobile with adjusted padding
-- **Login Page**:
-  - Mobile logo aligned to left instead of center
-  - Changed to `useColorScheme()` for proper reactive theme detection
-- **Delete Account Modal**:
-  - Buttons stack vertically on mobile (Delete Account first, Cancel below)
-  - Increased horizontal padding
-
-### Fixed
-
-- **Page Title Duplication** - Removed redundant ` | DriveGate` suffix from 9 pages:
-  - `dashboard/page.tsx`: Dashboard
-  - `setup-totp/page.tsx`: Setup TOTP
-  - `setup-folder/page.tsx`: Setup Folder
-  - `setup-link/page.tsx`: Setup Upload Link
-  - `[slug]/page.tsx`: Secure Upload
-  - `login/page.tsx`: Sign In
-  - `privacy/page.tsx`: Privacy Policy
-  - `terms/page.tsx`: Terms of Service
-  - `auth/google/callback/page.tsx`: Signing In...
+- **"Upload a folder instead" Button** — No longer needed; drag‑and‑drop handles folder uploads
+- **Hidden `<input webkitdirectory>` Element** — Removed along with `handleFolderSelect` and `folderInputRef`
+- **Back‑to‑Default Button** — Removed the `ArrowBack` icon button and `handleBackToDefault` function
+- **Unused Imports** — Removed `CircularProgress`, `ArrowBack`
+- File: `PublicUpload.client.tsx`
 
 ---
 

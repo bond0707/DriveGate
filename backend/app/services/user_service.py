@@ -104,14 +104,15 @@ class UserService:
         url_slug: str,
     ) -> Optional[Tuple[str, str, str]]:
         """
-        Gets TOTP secret, folder_id, and refresh_token in a single query.
-        Returns: (totp_secret, folder_id, refresh_token) or None if not found.
+        Gets TOTP secret, folder_id, folder_name and refresh_token in a single query.
+        Returns: (totp_secret, folder_id, folder_name, refresh_token) or None if not found.
         """
         try:
             query = (
                 select(
                     UserDriveModel.totp_secret,
                     UserDriveModel.folder_id,
+                    UserDriveModel.folder_name,
                     UserAuthModel.auth_secret
                 )
                 .join(UserAuthModel, UserDriveModel.user_auth_id == UserAuthModel.id)
@@ -127,7 +128,7 @@ class UserService:
             totp_secret = encryption_util.safe_decrypt(row.totp_secret) if row.totp_secret else None
             refresh_token = encryption_util.safe_decrypt(row.auth_secret) if row.auth_secret else None
             
-            return (totp_secret, row.folder_id, refresh_token)
+            return (totp_secret, row.folder_id, row.folder_name, refresh_token)
         except Exception as e:
             raise Exception(f"Failed to get TOTP and credentials: {e}")
     
@@ -359,11 +360,11 @@ class UserService:
         db: AsyncSession,
         url_slug: str,
     ) -> bool:
-        """Checks if a URL slug already exists."""
+        """Returns true if a URL slug already exists."""
         try:
-            query = select(UserDriveModel.id).where(UserDriveModel.url_slug == url_slug)
+            query = select(UserDriveModel.url_slug).where(UserDriveModel.url_slug == url_slug)
             result = await db.execute(query)
-            return result.first() is not None
+            return result.scalar_one_or_none()
         except Exception as e:
             raise Exception(f"Failed to check slug availability: {e}")
     

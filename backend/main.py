@@ -5,6 +5,7 @@ from app.routers.auth_router import auth_router
 from app.routers.totp_router import totp_router
 from app.database.connection import engine, Base
 from app.utils.dependencies import verify_api_key
+from app.routers.drive_router import drive_router
 from app.routers.url_slug_router import url_slug_router
 
 from contextlib import asynccontextmanager
@@ -51,6 +52,11 @@ app.include_router(
     router = url_slug_router, 
     prefix = '/url', 
     tags   = ['URL Slug']
+)
+app.include_router(
+    router = drive_router,
+    prefix = '/drive',
+    tags   = ['Drive']
 )
 
 @app.get("/", response_model=RootEndpointResponse, status_code=status.HTTP_200_OK)

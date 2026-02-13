@@ -35,7 +35,7 @@ api.interceptors.request.use(
 // - Upload token auth (get-upload-link uses uploadToken, not user token)
 
 // Public endpoints that return 401 for validation failures, not auth failures
-const PUBLIC_ENDPOINTS = ['/totp/verify', '/url/validate-slug'];
+const PUBLIC_ENDPOINTS = ['/totp/verify', '/url/slug/validate'];
 
 api.interceptors.response.use(
     (response) => response,

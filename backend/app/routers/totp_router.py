@@ -16,7 +16,7 @@ from app.services.google_auth_service import google_auth_service, InvalidRefresh
 
 totp_router = APIRouter()
 
-@totp_router.get("/setup", response_model=TOTPSecretResponse, status_code=status.HTTP_200_OK)
+@totp_router.get("/secret", response_model=TOTPSecretResponse, status_code=status.HTTP_200_OK)
 async def return_random_totp_secret_and_uri(user: UserModel = Depends(get_current_user)):
     try:
         totp_secret = totp_service.generate_totp_secret()
@@ -31,7 +31,7 @@ async def return_random_totp_secret_and_uri(user: UserModel = Depends(get_curren
             detail      = str(e)
         )
 
-@totp_router.get("/rescan", response_model=TOTPSecretResponse, status_code=status.HTTP_200_OK)
+@totp_router.get("/secret/current", response_model=TOTPSecretResponse, status_code=status.HTTP_200_OK)
 async def return_current_totp_secret_and_uri(
     user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -56,7 +56,7 @@ async def return_current_totp_secret_and_uri(
             detail      = str(e)
         )
 
-@totp_router.post("/store", response_model=MessageResponse, status_code=status.HTTP_200_OK)
+@totp_router.post("/secret", response_model=MessageResponse, status_code=status.HTTP_200_OK)
 async def verify_and_store_totp_secret(
     request: VerifyAndStoreTOTPRequest,
     user: UserModel = Depends(get_current_user),
@@ -124,7 +124,7 @@ async def verify_totp(
         if data is None:
             raise Exception(f"No data found for url_slug: {request.url_slug}")
 
-        totp_secret, folder_id, refresh_token = data
+        totp_secret, folder_id, folder_name, refresh_token = data
 
         if totp_secret is None:
             raise Exception(f"No totp_secret found for url_slug: {request.url_slug}")
@@ -156,7 +156,13 @@ async def verify_totp(
         google_access_token = await google_auth_service.get_access_token(refresh_token)
 
         # Generate and return a one-time upload token
-        return {"upload_token": jwt_manager.create_upload_token(request.url_slug, google_access_token, folder_id)}
+        jwt_upload_token = jwt_manager.create_upload_token(
+            url_slug = request.url_slug,
+            folder_id = folder_id,
+            folder_name = folder_name,
+            google_access_token = google_access_token
+        )
+        return {"upload_token": jwt_upload_token}
     except HTTPException:
         raise
     except InvalidRefreshTokenError as e:
