@@ -124,7 +124,7 @@ export default function DashboardClient() {
                     // If user skipped/canceled folder setup, auto-set default via API
                     localStorage.removeItem('skip_folder_setup');
                     try {
-                        await api.post('/auth/me/update-drive-folder', {
+                        await api.patch('/drive/folder', {
                             folder_name: 'DriveGate Uploads',
                             drive_type: 'GOOGLE_DRIVE'
                         });

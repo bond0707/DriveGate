@@ -1,53 +1,236 @@
 # DriveGate
 
-A web app that lets users upload data to their own google drives without logging in using TOTP.
+A web app that lets users upload files directly to their own Google Drive — without logging in — using TOTP verification.
 
-## **Schema Diagram**
+## Schema Diagram
 
 [Click here to view the schema diagram.](https://drawsql.app/teams/goon-squad/diagrams/schema-diagram "Drivegate Schema Diagram")
 
-## **TOTP Flow**
+---
 
-### **Initial Setup (First-time TOTP Configuration)**
+## Architecture Flows
 
-1. **Request TOTP Secret** : NextJS calls FastAPI's `/setup` endpoint to get a randomly generated TOTP secret.
-2. **Generate QR Code** : NextJS uses the returned `totp_secret` to generate and display a QR code to the user.
-3. **User Setup** : The user scans the QR code with their authenticator app (Google Authenticator, Authy, etc.) to add the TOTP secret.
-4. **Verify Setup** : The user enters the first OTP from their app and submits.
-5. **Store Secret** : NextJS sends the OTP and TOTP secret to `/store`. FastAPI verifies the OTP and, if correct, stores the TOTP secret in the database for that user.
+### 1. Google OAuth Sign-Up Flow
 
-### **Subsequent TOTP Usage (Upload Verification)**
+First-time users sign up with Google, granting Drive permissions. This creates their account and links their Google Drive.
 
-1. **Get User Info** : FastAPI uses the URL slug to identify the user (via `/{url_slug}` endpoint in main.py).
-2. **Request TOTP** : The user is prompted to enter their current TOTP code.
-3. **Verify TOTP** : NextJS sends the TOTP code and URL slug to the `/verify` endpoint.
-4. **Validation** : FastAPI:
+```mermaid
+%%{init: {'theme': 'dark'}}%%
+sequenceDiagram
+    participant User
+    participant Frontend as Next.js Frontend
+    participant Proxy as Next.js /api Proxy
+    participant Backend as FastAPI Backend
+    participant Google as Google OAuth
 
-* Fetches the TOTP secret from the database using the URL slug
-* Verifies the provided TOTP code against the stored secret
-* Returns `is_valid: true` (Response 200 OK) or `is_valid: false` (Error response (due to @Dhruvil))
+    User->>Frontend: Click "Sign up with Google"
+    Frontend->>Proxy: GET /auth/google/login?force_consent=true
+    Proxy->>Backend: forward
+    Backend-->>Frontend: auth_url (with prompt=consent)
+    Frontend->>Google: Redirect to auth_url
+    Google-->>Frontend: Redirect with ?code=...
 
-## Upload Flow
+    Frontend->>Proxy: POST /auth/google/callback { code }
+    Proxy->>Backend: forward
+    Backend->>Google: Exchange code → access_token + refresh_token
+    Backend->>Google: GET /userinfo (email, name, picture)
+    Backend->>Backend: Create user + user_auth + user_drive records
+    Backend->>Backend: Generate JWT (type: "access")
+    Backend-->>Frontend: { access_token, user }
+    Frontend->>Frontend: Store JWT, redirect to /dashboard
+```
 
-1. User configures TOTP and URL slug on the website.
-2. User opens their upload URL (`/{url_slug}`) on a **remote PC**.
-3. Remote PC renders upload UI and prompts for TOTP.
-4. User enters TOTP from their authenticator app.
-5. Remote PC sends TOTP and URL slug to `/totp/verify`.
-6. Backend verifies TOTP and returns a short-lived upload token.
-7. Remote PC requests upload URL via `/url/get-upload-link` using upload token.
-8. Backend returns Google Drive resumable upload URL.
-9. Remote PC uploads file directly to Google Drive.
-10. Upload token expires or is invalidated after use.
+> **Note:** Returning users use `force_consent=false` which skips the consent screen. If a new user accidentally clicks "Sign In", they get a `409 CONFLICT` and the frontend guides them to sign up.
+
+---
+
+### 2. TOTP Setup Flow
+
+After signing up, users configure TOTP to secure their upload link.
+
+```mermaid
+%%{init: {'theme': 'dark'}}%%
+sequenceDiagram
+    participant User
+    participant Frontend as Next.js Frontend
+    participant Proxy as Next.js /api Proxy
+    participant Backend as FastAPI Backend
+
+    User->>Frontend: Navigate to /setup-totp
+    Frontend->>Proxy: GET /totp/secret
+    Proxy->>Backend: forward (JWT auth)
+    Backend->>Backend: Generate random TOTP secret + provisioning URI
+    Backend-->>Frontend: { totp_secret, provisioning_uri }
+
+    Frontend->>Frontend: Render QR code from provisioning_uri
+    User->>User: Scan QR code with authenticator app
+    User->>Frontend: Enter 6-digit code from app
+
+    Frontend->>Proxy: POST /totp/secret { user_totp, user_totp_secret }
+    Proxy->>Backend: forward (JWT auth)
+    Backend->>Backend: Verify TOTP code against secret
+    Backend->>Backend: Encrypt & store secret in DB
+    Backend-->>Frontend: { message: "TOTP Secret successfully stored" }
+```
+
+---
+
+### 3. Upload Flow (Files & Folders)
+
+The core flow — a remote user uploads files to the account owner's Google Drive via TOTP verification.
+
+```mermaid
+%%{init: {'theme': 'dark'}}%%
+sequenceDiagram
+    participant User as Remote User
+    participant Frontend as Next.js Frontend
+    participant Proxy as Next.js /api Proxy
+    participant Backend as FastAPI Backend
+    participant Google as Google Drive API
+
+    User->>Frontend: Open /my-upload-slug
+    Frontend->>Proxy: POST /url/slug/validate { url_slug }
+    Proxy->>Backend: forward
+    Backend-->>Frontend: { message: "Url slug is valid!" }
+
+    User->>Frontend: Enter 6-digit TOTP
+    Frontend->>Proxy: POST /totp/verify { totp, url_slug }
+    Proxy->>Backend: forward
+    Backend->>Backend: Verify TOTP (with rate limiting)
+    Backend->>Google: Refresh token → access token
+    Backend->>Backend: Create upload JWT (15-min TTL)
+    Backend-->>Frontend: upload_token<br/>contains: google_access_token, folder_id, folder_name, url_slug
+
+    opt Folder Upload (drag-and-drop)
+        Frontend->>Frontend: Detect folder structure from file.path
+        Frontend->>Frontend: Show confirmation dialog
+        loop Create folder tree (depth-first)
+            Frontend->>Proxy: POST /drive/folder { folder_name, parent_folder_id }
+            Proxy->>Backend: forward (upload token auth)
+            Backend->>Google: Create folder in Drive
+            Backend-->>Frontend: { folder_id }
+        end
+    end
+
+    loop Per file (concurrent)
+        Frontend->>Proxy: POST /drive/upload-link { file_name, mime_type, parent_folder_id }
+        Proxy->>Backend: forward (upload token auth)
+        Backend->>Google: Initiate resumable upload → Location URL
+        Backend-->>Frontend: { upload_url }
+        Frontend->>Google: PUT file bytes to upload_url (direct)
+    end
+```
+
+---
+
+### 4. Drive Folder Setup Flow
+
+Users configure which Google Drive folder receives uploads.
+
+```mermaid
+%%{init: {'theme': 'dark'}}%%
+sequenceDiagram
+    participant User
+    participant Frontend as Next.js Frontend
+    participant Proxy as Next.js /api Proxy
+    participant Backend as FastAPI Backend
+    participant Google as Google Drive API
+
+    User->>Frontend: Navigate to /setup-folder
+    User->>Frontend: Enter folder name
+    Frontend->>Proxy: PATCH /drive/folder { folder_name, drive_type }
+    Proxy->>Backend: forward (JWT auth)
+    Backend->>Backend: Get refresh token from DB
+    Backend->>Google: Refresh token → access token
+    Backend->>Google: Create folder in Drive
+    Backend->>Backend: Store folder_id + folder_name in DB
+    Backend-->>Frontend: { folder_id, folder_name }
+```
+
+---
+
+### 5. URL Slug Setup Flow
+
+Users configure their custom upload URL.
+
+```mermaid
+%%{init: {'theme': 'dark'}}%%
+sequenceDiagram
+    participant User
+    participant Frontend as Next.js Frontend
+    participant Proxy as Next.js /api Proxy
+    participant Backend as FastAPI Backend
+
+    User->>Frontend: Navigate to /setup-link
+    User->>Frontend: Type desired slug
+
+    loop Real-time check
+        Frontend->>Proxy: POST /url/slug/check-availability { url_slug }
+        Proxy->>Backend: forward (JWT auth)
+        Backend-->>Frontend: { available: true/false }
+    end
+
+    User->>Frontend: Confirm slug
+    Frontend->>Proxy: PATCH /url/slug { url_slug }
+    Proxy->>Backend: forward (JWT auth)
+    Backend->>Backend: Update url_slug in DB (unique constraint)
+    Backend-->>Frontend: { url_slug }
+```
+
+---
+
+## Project Structure
+
+```
+DriveGate/
+├── frontend/                    # Next.js application
+│   ├── src/app/
+│   │   ├── [slug]/              # Public upload page (TOTP → upload)
+│   │   ├── dashboard/           # User dashboard
+│   │   ├── login/               # Google OAuth login
+│   │   ├── setup-totp/          # TOTP configuration
+│   │   ├── setup-folder/        # Drive folder setup
+│   │   ├── setup-link/          # URL slug setup
+│   │   └── auth/google/callback # OAuth callback
+│   └── CHANGELOG.md
+│
+├── backend/                     # FastAPI application
+│   ├── app/
+│   │   ├── routers/
+│   │   │   ├── auth_router.py       # /auth/* — OAuth, user profile, token validation
+│   │   │   ├── totp_router.py       # /totp/* — TOTP setup and verification
+│   │   │   ├── url_slug_router.py   # /url/*  — URL slug management
+│   │   │   └── drive_router.py      # /drive/* — Folder creation, upload links
+│   │   ├── services/
+│   │   │   ├── google_auth_service.py   # OAuth token management
+│   │   │   ├── google_drive_service.py  # Drive API operations
+│   │   │   ├── totp_service.py          # TOTP generation/verification
+│   │   │   └── user_service.py          # User CRUD
+│   │   ├── models/                  # SQLAlchemy models
+│   │   ├── schemas/                 # Pydantic request/response models
+│   │   └── utils/
+│   │       ├── jwt_manager.py       # JWT creation/validation
+│   │       ├── dependencies.py      # Route dependencies
+│   │       └── rate_limiter.py      # TOTP brute-force protection
+│   ├── testcases/                   # API test documentation
+│   └── CHANGELOG.md
+│
+└── README.md
+```
+
+---
 
 ## Future Updates
 
-* [ ] Add actual user CRUD.
-* [ ] Add multiple accounts from same providers functionality.
-* [ ] **Redis Integration** - Replace in-memory caches with Redis for:
+- [ ] Add actual user CRUD
+- [ ] It is possible to remove "/setup-folder" flow entirely
+- [ ] Proper validation required for URL slugs and other similar stuff at all three levels (frontend, backend, database)
+- [ ] Frontend code should be refactored since it has grown too much
+- [ ] Add multiple accounts from same providers functionality
+- [ ] **Redis Integration** — Replace in-memory caches with Redis for:
   - Rate limiter (TOTP brute-force protection)
   - Google access token cache (currently 55-min in-memory TTL)
 
 ## Bugs To Fix
 
-* [ ] If a user goes to their upload url, opens another tab, changes their upload url, and then enters the totp in the tab with the old url, it shows `Database Error : No totp_secret found for the url slug : my_slug`. This is correct behaviour but just needs graceful error handling on the frontend side. (and similar bugs)
+- [ ] If a user goes to their upload URL, opens another tab, changes their upload URL, and then enters the TOTP in the tab with the old URL, it shows `Database Error: No totp_secret found for the url slug: my_slug`. This is correct behaviour but just needs graceful error handling on the frontend side. (and similar bugs)

@@ -13,8 +13,6 @@ from app.schemas.user import (
     UserResponse, 
     GoogleAuthRequest, 
     DeleteUserResponse,
-    FolderUpdateRequest,
-    FolderUpdateResponse,
 )
 
 auth_router = APIRouter()
@@ -195,56 +193,8 @@ async def delete_current_user(
             detail      = f"Could not delete user : {str(e)}"
         )
 
-@auth_router.post("/me/update-drive-folder", response_model=FolderUpdateResponse, status_code=status.HTTP_200_OK)
-async def update_drive_folder(
-    request: FolderUpdateRequest,
-    db: AsyncSession = Depends(get_db),
-    user: UserModel = Depends(get_current_user),
-):
-    try:
-        auth_secret = await user_service.get_auth_secret_by_user_id_drive_type(
-            db         = db,
-            user_id    = user.id,
-            drive_type = request.drive_type
-        )
-        if auth_secret is None:
-            raise HTTPException(
-                status_code = status.HTTP_404_NOT_FOUND,
-                detail      = "Could not find auth secret for the current user!"
-            )
-        access_token = await google_auth_service.get_access_token(auth_secret)
-        folder_id = await google_auth_service.create_drive_folder(
-            request.folder_name,
-            access_token
-        )
-        user_drive = await user_service.update_drive_folder_id_and_name(
-            db          = db,
-            user_id     = user.id,
-            drive_type  = request.drive_type,
-            folder_id   = folder_id,
-            folder_name = request.folder_name
-        )
-
-        if user_drive is None:
-            raise HTTPException(
-                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail      = "Could not update folder_id and folder_name for the current user in db!"
-            )
-
-        return {
-            "folder_id": folder_id, 
-            "folder_name": request.folder_name
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail      = f"Could not create folder in drive : {str(e)}"
-        )
-
 # Token validation middleware
-@auth_router.get('/validate-token', status_code=status.HTTP_200_OK)
+@auth_router.get('/token/validate', status_code=status.HTTP_200_OK)
 async def validate_token(token: str):
     payload = jwt_manager.verify_token(token)
     if payload:

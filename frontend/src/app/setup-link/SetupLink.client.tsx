@@ -86,7 +86,7 @@ export default function SetupLinkClient() {
         setError('');
 
         try {
-            await api.patch('/url/update', { url_slug: slug });
+            await api.patch('/url/slug', { url_slug: slug });
             await checkAuth(); // Refresh user data to update context
 
             // First-time setup: continue to folder setup

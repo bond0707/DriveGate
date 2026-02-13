@@ -67,15 +67,22 @@ class JWTManager:
         
         return self.create_access_token(data)
     
-    def create_upload_token(self, url_slug: str, google_access_token: str, folder_id: str) -> str:
+    def create_upload_token(
+        self,
+        url_slug: str,
+        folder_id: str,
+        folder_name: str,
+        google_access_token: str,
+        ) -> str:
         """
         Creates an upload token with a shorter TTL (15 minutes) for security.
         Contains the Google access token, folder ID, and URL slug.
         """
         data = {
             "url_slug": url_slug,
+            "folder_id": folder_id,
+            "folder_name": folder_name,
             "google_access_token": google_access_token,
-            "folder_id": folder_id
         }
         
         # Use shorter expiration for upload tokens (15 minutes)

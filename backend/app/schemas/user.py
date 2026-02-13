@@ -1,19 +1,10 @@
 from typing import Optional
-from app.core.enums import DriveType
 from pydantic import BaseModel, EmailStr, Field
 
 # Request schema when google redirects from uri
 class GoogleAuthRequest(BaseModel):
     code: str
     state: Optional[str] = None  # Optional parameter for security
-
-class FolderUpdateRequest(BaseModel):
-    folder_name: str = Field(..., pattern=r"^[a-zA-Z0-9\s-]+$")
-    drive_type: DriveType
-
-class FolderUpdateResponse(BaseModel):
-    folder_id: str
-    folder_name: str
 
 # Response Schema for user data going to Frontend
 class UserResponse(BaseModel):

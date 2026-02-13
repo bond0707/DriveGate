@@ -1,24 +1,29 @@
-import httpx
-from app.schemas.drive import *
-from app.core.config import settings
 from app.core.enums import DriveType
 from app.models.users import UserModel
 from sqlalchemy.exc import IntegrityError
 from app.database.connection import get_db
 from fastapi.exceptions import HTTPException
-from fastapi import APIRouter, status, Depends, Query
+from fastapi import APIRouter, status, Depends 
+from app.schemas.generic import MessageResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.user_service import user_service
-from app.utils.dependencies import get_current_user, get_upload_token_payload
+from app.utils.dependencies import get_current_user
+from app.schemas.url_slug import (
+    ValidateURLSlugRequest,
+    UpdateURLSlugRequest, 
+    UpdateURLSlugResponse,
+    CheckURLSlugAvailabilityRequest,
+    CheckURLSlugAvailabilityResponse
+)
 
 url_slug_router = APIRouter()
 
-@url_slug_router.get("/validate-slug", status_code=status.HTTP_200_OK)
-async def verify_url_slug(
-    url_slug: str, 
+@url_slug_router.post("/slug/validate", response_model=MessageResponse, status_code=status.HTTP_200_OK)
+async def validate_url_slug(
+    request: ValidateURLSlugRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    if await user_service.get_totp_secret_by_url_slug(db, url_slug) is None:
+    if await user_service.get_totp_secret_by_url_slug(db, request.url_slug) is None:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
             detail      = "Url slug is invalid, redirect to marketing page (to-do)!"
@@ -26,9 +31,9 @@ async def verify_url_slug(
     else:
         return {"message": "Url slug is valid!"}
 
-@url_slug_router.patch("/update", response_model=UpdateURLSlugResponse, status_code=status.HTTP_200_OK)
+@url_slug_router.patch("/slug", response_model=UpdateURLSlugResponse, status_code=status.HTTP_200_OK)
 async def update_url_slug(
-    request: URLSlugUpdateRequest,
+    request: UpdateURLSlugRequest,
     user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -53,82 +58,18 @@ async def update_url_slug(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail      = str(e)
         )
-# biz
-@url_slug_router.get("/check-availability", status_code=status.HTTP_200_OK)
+
+@url_slug_router.post("/slug/check-availability", response_model=CheckURLSlugAvailabilityResponse, status_code=status.HTTP_200_OK)
 async def check_slug_availability(
-    slug: str = Query(..., pattern=r"^[a-z0-9-]+$"),
+    request: CheckURLSlugAvailabilityRequest,
     db: AsyncSession = Depends(get_db),
     user: UserModel = Depends(get_current_user)
 ):
     try:
-        exists = await user_service.check_url_slug_exists(db, slug)
+        exists = await user_service.check_url_slug_exists(db, request.url_slug)
         return {"available": not exists}
     except Exception as e:
         raise HTTPException(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail      = str(e)
         )
-
-@url_slug_router.post("/get-upload-link", response_model=UploadURLResponse, status_code=status.HTTP_200_OK)
-async def get_upload_uri(
-    file_metadata: FileMetadataRequest,
-    db: AsyncSession = Depends(get_db),
-    payload: dict = Depends(get_upload_token_payload)
-):
-    url_slug = payload.get("url_slug")
-    google_access_token = payload.get("google_access_token")
-    folder_id = payload.get("folder_id")
-
-    if not url_slug:
-        raise HTTPException(
-            status_code = status.HTTP_401_UNAUTHORIZED,
-            detail      = "Invalid token payload"
-        )
-
-    if not google_access_token:
-        raise HTTPException(
-            status_code = status.HTTP_401_UNAUTHORIZED,
-            detail      = "Missing access token in payload"
-        )
-
-    if not folder_id:
-        raise HTTPException(
-            status_code = status.HTTP_401_UNAUTHORIZED,
-            detail      = "Missing folder ID in payload"
-        )
-
-    headers = {
-        "Authorization": f"Bearer {google_access_token}",
-        "Content-Type": "application/json",
-        "X-Upload-Content-Type": file_metadata.mime_type,
-        # CRITICAL: Origin header required for Google to allow CORS on the PUT request from browser
-        "Origin": settings.CORS_ORIGIN
-    }
-
-    body = {
-        "name": file_metadata.file_name,
-        "parents": [folder_id],
-    }
-
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            url     = settings.GOOGLE_DRIVE_UPLOAD_REQUEST_URL,
-            headers = headers,
-            json    = body
-        )
-
-    if response.status_code != status.HTTP_200_OK:
-        raise HTTPException(
-            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail      = "Failed to initiate upload with google!"
-        )
-
-    upload_url = response.headers.get("Location")
-
-    if upload_url is None:
-        raise HTTPException(
-            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail      = "Google did not return a upload URL!"
-        )
-
-    return {"upload_url": upload_url}
