@@ -46,10 +46,10 @@ A web app that lets users upload files directly to their own Google Drive, witho
 
 | Path                                     | Description                                          |
 | :--------------------------------------- | :--------------------------------------------------- |
-| `app/routers/auth_router.py`           | `/auth/*` — OAuth, user profile, token validation |
-| `app/routers/totp_router.py`           | `/totp/*` — TOTP setup and verification           |
-| `app/routers/url_slug_router.py`       | `/url/*` — URL slug management                    |
-| `app/routers/drive_router.py`          | `/drive/*` — Folder creation, upload links        |
+| `app/routers/auth_router.py`           | `/auth/*`  OAuth, user profile, token validation |
+| `app/routers/totp_router.py`           | `/totp/*`  TOTP setup and verification           |
+| `app/routers/url_slug_router.py`       | `/url/*`  URL slug management                    |
+| `app/routers/drive_router.py`          | `/drive/*`  Folder creation, upload links        |
 | `app/services/google_auth_service.py`  | OAuth token management                               |
 | `app/services/google_drive_service.py` | Drive API operations                                 |
 | `app/services/totp_service.py`         | TOTP generation/verification                         |
@@ -133,7 +133,7 @@ sequenceDiagram
 
 ### 3. Upload Flow (Files & Folders)
 
-The core flow — a remote user uploads files to the account owner's Google Drive via TOTP verification.
+The core flow: a remote user uploads files to the account owner's Google Drive via TOTP verification.
 
 ```mermaid
 %%{init: {'theme': 'dark'}}%%
@@ -240,11 +240,11 @@ sequenceDiagram
 ## Future Updates
 
 - [ ] Add actual user CRUD
-- [ ] It is possible to remove "/setup-folder" flow entirely
+- [ ] It is possible to remove `"/setup-folder"` flow entirely
 - [ ] Proper validation required for URL slugs and other similar stuff at all three levels (frontend, backend, database)
 - [ ] Frontend code should be refactored since it has grown too much
 - [ ] Add multiple accounts from same providers functionality
-- [ ] **Redis Integration** — Replace in-memory caches with Redis for:
+- [ ] **Redis Integration**: Replace in-memory caches with Redis for:
 
   - Rate limiter (TOTP brute-force protection)
   - Google access token cache (currently 55-min in-memory TTL)
