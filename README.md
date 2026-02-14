@@ -1,10 +1,72 @@
 # DriveGate
 
-A web app that lets users upload files directly to their own Google Drive — without logging in — using TOTP verification.
+A web app that lets users upload files directly to their own Google Drive, without logging in, using TOTP verification.
 
-## Schema Diagram
+---
 
-[Click here to view the schema diagram.](https://drawsql.app/teams/goon-squad/diagrams/schema-diagram "Drivegate Schema Diagram")
+## Tech Stack
+
+#### Frontend
+
+* **Framework:** **Next.js**
+* **Hosting:** **Vercel**
+* **Network & Security:** **Cloudflare** (DNS, Email Forwarding, and Network Layer Rate Limiting)
+
+#### Backend
+
+* **Framework:** **FastAPI** (Python 3.11.6+)
+* **ORM:** **SQLAlchemy** (Asynchronous Database Toolkit)
+* **Hosting:** **Vercel Serverless Functions**
+* **Availability:** **cron-job.org** (Vercel Cold-start Mitigation)
+
+#### Database
+
+* **Database:** **PostgreSQL** (Managed via **Aiven**)
+
+---
+
+## Project Structure
+
+### Frontend: Next.js Application
+
+| Path                              | Description                         |
+| :-------------------------------- | :---------------------------------- |
+| `src/app/`                      | App router pages                    |
+| `src/app/[slug]/`               | Public upload page (TOTP → upload) |
+| `src/app/api/[...path]/`        | Proxy route to backend API          |
+| `src/app/auth/google/callback/` | OAuth callback                      |
+| `src/app/dashboard/`            | User dashboard                      |
+| `src/app/login/`                | Google OAuth login                  |
+| `src/app/setup-totp/`           | TOTP configuration                  |
+| `src/app/setup-folder/`         | Drive folder setup                  |
+| `src/app/setup-link/`           | URL slug setup                      |
+| `src/app/privacy/`              | Privacy policy                      |
+| `src/app/terms/`                | Terms of service                    |
+| `src/components/`               | Reusable UI components              |
+| `src/context/`                  | React context providers (auth)      |
+| `src/lib/`                      | API client utilities                |
+
+### Backend: FastAPI Application
+
+| Path                                     | Description                                          |
+| :--------------------------------------- | :--------------------------------------------------- |
+| `app/routers/auth_router.py`           | `/auth/*` — OAuth, user profile, token validation |
+| `app/routers/totp_router.py`           | `/totp/*` — TOTP setup and verification           |
+| `app/routers/url_slug_router.py`       | `/url/*` — URL slug management                    |
+| `app/routers/drive_router.py`          | `/drive/*` — Folder creation, upload links        |
+| `app/services/google_auth_service.py`  | OAuth token management                               |
+| `app/services/google_drive_service.py` | Drive API operations                                 |
+| `app/services/totp_service.py`         | TOTP generation/verification                         |
+| `app/services/user_service.py`         | User CRUD                                            |
+| `app/models/`                          | SQLAlchemy models                                    |
+| `app/schemas/`                         | Pydantic request/response models                     |
+| `app/core/`                            | App config and enums                                 |
+| `app/database/`                        | Database connection and enums                        |
+| `app/utils/jwt_manager.py`             | JWT creation/validation                              |
+| `app/utils/dependencies.py`            | Route dependencies                                   |
+| `app/utils/encryption.py`              | TOTP secret encryption                               |
+| `app/utils/rate_limiter.py`            | TOTP brute-force protection                          |
+| `testcases/`                           | API test documentation                               |
 
 ---
 
@@ -179,44 +241,9 @@ sequenceDiagram
 
 ---
 
-## Project Structure
+## Schema Diagram
 
-```
-DriveGate/
-├── frontend/                    # Next.js application
-│   ├── src/app/
-│   │   ├── [slug]/              # Public upload page (TOTP → upload)
-│   │   ├── dashboard/           # User dashboard
-│   │   ├── login/               # Google OAuth login
-│   │   ├── setup-totp/          # TOTP configuration
-│   │   ├── setup-folder/        # Drive folder setup
-│   │   ├── setup-link/          # URL slug setup
-│   │   └── auth/google/callback # OAuth callback
-│   └── CHANGELOG.md
-│
-├── backend/                     # FastAPI application
-│   ├── app/
-│   │   ├── routers/
-│   │   │   ├── auth_router.py       # /auth/* — OAuth, user profile, token validation
-│   │   │   ├── totp_router.py       # /totp/* — TOTP setup and verification
-│   │   │   ├── url_slug_router.py   # /url/*  — URL slug management
-│   │   │   └── drive_router.py      # /drive/* — Folder creation, upload links
-│   │   ├── services/
-│   │   │   ├── google_auth_service.py   # OAuth token management
-│   │   │   ├── google_drive_service.py  # Drive API operations
-│   │   │   ├── totp_service.py          # TOTP generation/verification
-│   │   │   └── user_service.py          # User CRUD
-│   │   ├── models/                  # SQLAlchemy models
-│   │   ├── schemas/                 # Pydantic request/response models
-│   │   └── utils/
-│   │       ├── jwt_manager.py       # JWT creation/validation
-│   │       ├── dependencies.py      # Route dependencies
-│   │       └── rate_limiter.py      # TOTP brute-force protection
-│   ├── testcases/                   # API test documentation
-│   └── CHANGELOG.md
-│
-└── README.md
-```
+[Click here to view the schema diagram.](https://drawsql.app/teams/goon-squad/diagrams/schema-diagram "Drivegate Schema Diagram")
 
 ---
 
@@ -228,8 +255,11 @@ DriveGate/
 - [ ] Frontend code should be refactored since it has grown too much
 - [ ] Add multiple accounts from same providers functionality
 - [ ] **Redis Integration** — Replace in-memory caches with Redis for:
+
   - Rate limiter (TOTP brute-force protection)
   - Google access token cache (currently 55-min in-memory TTL)
+
+---
 
 ## Bugs To Fix
 
