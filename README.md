@@ -2,8 +2,6 @@
 
 A web app that lets users upload files directly to their own Google Drive, without logging in, using TOTP verification.
 
----
-
 ## Tech Stack
 
 #### Frontend
@@ -22,8 +20,6 @@ A web app that lets users upload files directly to their own Google Drive, witho
 #### Database
 
 * **Database:** **PostgreSQL** (Managed via **Aiven**)
-
----
 
 ## Project Structure
 
@@ -45,7 +41,7 @@ A web app that lets users upload files directly to their own Google Drive, witho
 | `src/components/`               | Reusable UI components              |
 | `src/context/`                  | React context providers (auth)      |
 | `src/lib/`                      | API client utilities                |
-
+---
 ### Backend: FastAPI Application
 
 | Path                                     | Description                                          |
@@ -67,8 +63,6 @@ A web app that lets users upload files directly to their own Google Drive, witho
 | `app/utils/encryption.py`              | TOTP secret encryption                               |
 | `app/utils/rate_limiter.py`            | TOTP brute-force protection                          |
 | `testcases/`                           | API test documentation                               |
-
----
 
 ## Architecture Flows
 
@@ -239,13 +233,9 @@ sequenceDiagram
     Backend-->>Frontend: { url_slug }
 ```
 
----
-
 ## Schema Diagram
 
 [Click here to view the schema diagram.](https://drawsql.app/teams/goon-squad/diagrams/schema-diagram "Drivegate Schema Diagram")
-
----
 
 ## Future Updates
 
@@ -258,8 +248,6 @@ sequenceDiagram
 
   - Rate limiter (TOTP brute-force protection)
   - Google access token cache (currently 55-min in-memory TTL)
-
----
 
 ## Bugs To Fix
 
