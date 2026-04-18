@@ -3,7 +3,6 @@ import {
     Box,
     Container,
     Typography,
-    Paper,
     TextField,
     Button,
     InputAdornment,
@@ -14,16 +13,14 @@ import {
     ArrowForward,
     Close,
 } from '@mui/icons-material';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import SquircleLoader from '@/components/SquircleLoader';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-
-const MotionPaper = motion.create(Paper);
-const MotionBox = motion.create(Box);
+import { MotionPaper, MotionBox } from '@/components/motion';
 
 export default function SetupLinkClient() {
     const router = useRouter();
@@ -202,7 +199,7 @@ export default function SetupLinkClient() {
                         sx={{ mb: 3 }}
                     />
 
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <m.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                         <Button
                             variant="contained"
                             size="large"
@@ -214,7 +211,7 @@ export default function SetupLinkClient() {
                         >
                             {isCreating ? 'Saving...' : isUpdate ? 'Update' : 'Create Link'}
                         </Button>
-                    </motion.div>
+                    </m.div>
 
                     <Typography
                         variant="caption"

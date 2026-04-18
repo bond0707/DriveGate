@@ -6,6 +6,10 @@
 # VS Code configs
 .vscode/
 
+# skills
+.agents/
+skills-lock.json
+
 # Assets directory
 assets/
 

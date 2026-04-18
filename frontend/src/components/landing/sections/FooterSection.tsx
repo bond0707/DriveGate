@@ -1,43 +1,23 @@
 'use client';
 import { useState } from 'react';
-import { Box, Container, Typography, Button, Link, Paper } from '@mui/material';
+import { Container, Typography, Button, Link, Box } from '@mui/material';
 import { GitHub, Mail } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { useColorScheme } from '@mui/material/styles';
 import Image from 'next/image';
 
-const MotionPaper = motion.create(Paper);
-
+import { MotionPaper } from '@/components/motion';
 export default function FooterSection() {
     const [contactOpen, setContactOpen] = useState(false);
     const { mode } = useColorScheme();
 
     return (
         <>
-            <Box
-                component="footer"
-                sx={{
-                    py: 4,
-                    borderTop: 1,
-                    borderColor: 'divider',
-                }}
-            >
+            <Box component="footer" sx={{ py: 4, borderTop: '1px solid', borderColor: 'divider' }}>
                 <Container maxWidth="lg">
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: 2,
-                        }}
-                    >
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         {/* Legal Links */}
-                        <Box sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: { xs: 2, sm: 3 },
-                            flexDirection: { xs: 'column', sm: 'row' },
-                        }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' } }}>
                             <Link
                                 href="/privacy"
                                 sx={{
@@ -78,7 +58,6 @@ export default function FooterSection() {
                                 Contact Us
                             </Link>
                         </Box>
-
                         <Typography variant="body2" color="text.secondary">
                             © 2026 DriveGate. All rights reserved.
                         </Typography>
@@ -90,34 +69,15 @@ export default function FooterSection() {
             <AnimatePresence>
                 {contactOpen && (
                     <>
-                        {/* Backdrop with blur */}
-                        <motion.div
+                        <m.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setContactOpen(false)}
-                            style={{
-                                position: 'fixed',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                zIndex: 1300,
-                                backdropFilter: 'blur(8px)',
-                                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                            }}
+                            style={{ position: 'fixed', inset: 0, zIndex: 1300, backdropFilter: 'blur(16px)', backgroundColor: 'rgba(0,0,0,0.5)' }}
                         />
 
-                        {/* Modal Card */}
-                        <Box
-                            sx={{
-                                position: 'fixed',
-                                top: '50%',
-                                left: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                zIndex: 1400,
-                            }}
-                        >
+                        <Box sx={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1400 }}>
                             <MotionPaper
                                 initial={{ scale: 0.8, opacity: 0, y: 20 }}
                                 animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -135,14 +95,7 @@ export default function FooterSection() {
                                     borderColor: 'divider',
                                 }}
                             >
-                                {/* Content */}
-                                <Box
-                                    sx={{
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        mb: 2,
-                                    }}
-                                >
+                                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
                                     <Image
                                         src={mode === 'dark' ? '/logo-dark.svg' : '/logo-light.svg'}
                                         alt="DriveGate"
@@ -165,12 +118,7 @@ export default function FooterSection() {
                                         startIcon={<GitHub />}
                                         href="https://github.com/bond0707"
                                         target="_blank"
-                                        sx={{
-                                            textTransform: 'none',
-                                            fontWeight: 600,
-                                            borderRadius: 100,
-                                            py: 1.5,
-                                        }}
+                                        sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 100, py: 1.5 }}
                                     >
                                         bond0707
                                     </Button>
@@ -180,12 +128,7 @@ export default function FooterSection() {
                                         startIcon={<GitHub />}
                                         href="https://github.com/koffandaff"
                                         target="_blank"
-                                        sx={{
-                                            textTransform: 'none',
-                                            fontWeight: 600,
-                                            borderRadius: 100,
-                                            py: 1.5,
-                                        }}
+                                        sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 100, py: 1.5 }}
                                     >
                                         koffandaff
                                     </Button>
@@ -199,12 +142,7 @@ export default function FooterSection() {
                                     fullWidth
                                     startIcon={<Mail />}
                                     href="mailto:support@drivegate.app"
-                                    sx={{
-                                        textTransform: 'none',
-                                        fontWeight: 600,
-                                        borderRadius: 100,
-                                        py: 1.5,
-                                    }}
+                                    sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 100, py: 1.5 }}
                                 >
                                     support@drivegate.app
                                 </Button>
@@ -216,4 +154,3 @@ export default function FooterSection() {
         </>
     );
 }
-

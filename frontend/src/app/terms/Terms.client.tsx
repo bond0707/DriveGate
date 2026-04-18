@@ -1,11 +1,10 @@
 'use client';
-import { Box, Container, Typography, Paper, Link, useColorScheme } from '@mui/material';
-import { motion } from 'framer-motion';
+import { Box, Container, Typography, Link, useColorScheme } from '@mui/material';
+import { m } from 'framer-motion';
 import Image from 'next/image';
 import ThemeToggle from '@/components/ThemeToggle';
 import { FileText, Mail, Shield, AlertTriangle, Users, Scale, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
-
-const MotionPaper = motion.create(Paper);
+import { MotionPaper } from '@/components/motion';
 
 export default function TermsClient() {
     const { mode } = useColorScheme();
@@ -186,7 +185,7 @@ export default function TermsClient() {
                 }}
             >
                 <Container maxWidth="md">
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
@@ -212,7 +211,7 @@ export default function TermsClient() {
                         <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.125rem' } }}>
                             Last Updated: January 10, 2026
                         </Typography>
-                    </motion.div>
+                    </m.div>
                 </Container>
             </Box>
 

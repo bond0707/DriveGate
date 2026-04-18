@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useId } from 'react';
 import QRCode from 'qrcode';
-import { Box, useTheme } from '@mui/material';
+import { useTheme } from '@mui/material';
 
 interface StyledQRCodeProps {
     value: string;
@@ -18,6 +18,7 @@ export default function StyledQRCode({
     logoSize = 40
 }: StyledQRCodeProps) {
     const theme = useTheme();
+    const componentId = useId();
     const [qrData, setQrData] = useState<{ modules: boolean[][]; size: number } | null>(null);
 
     // Color palette matching app theme
@@ -58,7 +59,7 @@ export default function StyledQRCode({
         generateQR();
     }, [value]);
 
-    // Generate SVG elements
+    // Generate SVG elements — uses stable useId() for gradient ID (SSR-safe)
     const svgContent = useMemo(() => {
         if (!qrData) return null;
 
@@ -77,8 +78,8 @@ export default function StyledQRCode({
             return false;
         };
 
-        // Generate unique gradient ID
-        const gradientId = `qr-gradient-${Math.random().toString(36).substr(2, 9)}`;
+        // Stable gradient ID from useId — no hydration mismatch
+        const gradientId = `qr-gradient-${componentId.replace(/:/g, '')}`;
 
         // Data modules (dots)
         const dots: React.ReactNode[] = [];
@@ -201,41 +202,41 @@ export default function StyledQRCode({
                 )}
             </svg>
         );
-    }, [qrData, size, logoSize, logoSrc, primaryColor, secondaryColor, backgroundColor]);
+    }, [qrData, size, logoSize, logoSrc, componentId, primaryColor, secondaryColor, backgroundColor]);
 
     if (!svgContent) {
         return (
-            <Box
-                sx={{
-                    width: size,
-                    height: size,
-                    bgcolor: backgroundColor,
-                    borderRadius: 3,
+            <div
+                style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    borderRadius: '12px',
+                    backgroundColor: 'white',
+                    width: size,
+                    height: size,
                 }}
             />
         );
     }
 
     return (
-        <Box
-            sx={{
+        <div
+            style={{
                 display: 'inline-flex',
-                justifyContent: 'center',
                 alignItems: 'center',
-                bgcolor: backgroundColor,
-                borderRadius: 3,
-                p: 2,
+                justifyContent: 'center',
+                borderRadius: '12px',
+                backgroundColor: 'white',
+                padding: '16px',
+                border: '1px solid',
+                borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                 boxShadow: theme.palette.mode === 'dark'
                     ? '0 4px 20px rgba(0,0,0,0.3)'
-                    : '0 4px 20px rgba(0,0,0,0.1)',
-                border: '1px solid',
-                borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'divider',
+                    : '0 4px 20px rgba(0,0,0,0.1)'
             }}
         >
             {svgContent}
-        </Box>
+        </div>
     );
 }

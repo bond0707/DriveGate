@@ -1,10 +1,9 @@
 'use client';
-import { Box, Container, Typography, Paper } from '@mui/material';
-import { motion } from 'framer-motion';
+import { Box, Container, Typography } from '@mui/material';
+import { MotionPaper } from '@/components/motion';
 import { Shield, Ghost, Zap, Lock } from 'lucide-react';
 import AnimatedSection from '../../AnimatedSection';
 
-const MotionPaper = motion.create(Paper);
 
 const features = [
     {

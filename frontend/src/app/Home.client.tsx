@@ -1,16 +1,19 @@
 'use client';
-import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
+import { Box, CircularProgress } from '@mui/material';
 import SmoothScrollProvider from '@/components/SmoothScrollProvider';
-
-// Dynamic import to avoid SSR issues with Lenis
-const LandingPage = dynamic(() => import('@/components/landing/LandingPage'), {
-    ssr: false,
-});
+import LandingPage from '@/components/landing/LandingPage';
 
 export default function HomeClient() {
     return (
         <SmoothScrollProvider>
-            <LandingPage />
+            <Suspense fallback={
+                <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
+                    <CircularProgress color="primary" />
+                </Box>
+            }>
+                <LandingPage />
+            </Suspense>
         </SmoothScrollProvider>
     );
 }

@@ -1,10 +1,8 @@
 'use client';
-import { Box, Container, Typography, Paper } from '@mui/material';
-import { motion } from 'framer-motion';
+import { Box, Container, Typography } from '@mui/material';
+import { MotionPaper } from '@/components/motion';
 import { GraduationCap, Printer, Users, Globe, Briefcase, Building } from 'lucide-react';
 import AnimatedSection from '../../AnimatedSection';
-
-const MotionPaper = motion.create(Paper);
 
 const useCases = [
     {
@@ -98,7 +96,7 @@ export default function UseCasesSection() {
                     {useCases.map((useCase, index) => (
                         <AnimatedSection key={useCase.title} delay={index * 0.08}>
                             <MotionPaper
-                                whileHover={{ y: -4, borderColor: 'primary.main' }}
+                                whileHover={{ y: -4, borderColor: '#00897B' }}
                                 transition={{ duration: 0.2 }}
                                 elevation={0}
                                 sx={{

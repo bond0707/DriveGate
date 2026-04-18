@@ -1,5 +1,5 @@
 'use client';
-import { motion, Variants } from 'framer-motion';
+import { m, Variants } from 'framer-motion';
 import { Typography, TypographyProps } from '@mui/material';
 
 interface TextRevealProps extends Omit<TypographyProps, 'children'> {
@@ -61,7 +61,7 @@ export default function TextReveal({
 
     return (
         <Typography
-            component={motion.div}
+            component={m.div}
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
@@ -76,7 +76,7 @@ export default function TextReveal({
             }}
         >
             {elements.map((element, index) => (
-                <motion.span
+                <m.span
                     key={index}
                     variants={variants}
                     style={{
@@ -85,10 +85,10 @@ export default function TextReveal({
                         marginRight: type === 'word' ? '0.3em' : undefined,
                     }}
                 >
-                    <motion.span style={{ display: 'inline-block' }}>
+                    <m.span style={{ display: 'inline-block' }}>
                         {element}
-                    </motion.span>
-                </motion.span>
+                    </m.span>
+                </m.span>
             ))}
         </Typography>
     );

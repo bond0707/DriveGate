@@ -3,17 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-
-interface User {
-    id: number;
-    username: string;
-    email: string;
-    picture_url?: string | null;
-    totp_secret?: string | null;
-    folder_id?: string | null;
-    folder_name?: string | null;
-    url_slug?: string | null;
-}
+import type { User } from '@/types/user.types';
 
 interface AuthContextType {
     user: User | null;
