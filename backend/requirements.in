@@ -5,6 +5,7 @@ pydantic
 cryptography
 python-jose
 python-dotenv
+pydantic-settings
 fastapi[standard]
 sqlalchemy[asyncio]
 google-api-python-client

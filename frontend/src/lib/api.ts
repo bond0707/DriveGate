@@ -1,8 +1,10 @@
-import axios, { AxiosInstance } from 'axios';
+import axios from 'axios';
 
 export const axiosInstance = axios;
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use local Next.js API proxy (adds X-API-Key server-side)
+// Requests to /api/* are forwarded to NEXT_PUBLIC_API_URL with the secret key
+const API_URL = '/api';
 
 export const api = axios.create({
     baseURL: API_URL,
@@ -33,7 +35,7 @@ api.interceptors.request.use(
 // - Upload token auth (get-upload-link uses uploadToken, not user token)
 
 // Public endpoints that return 401 for validation failures, not auth failures
-const PUBLIC_ENDPOINTS = ['/totp/verify', '/url/validate-slug'];
+const PUBLIC_ENDPOINTS = ['/totp/verify', '/url/slug/validate'];
 
 api.interceptors.response.use(
     (response) => response,

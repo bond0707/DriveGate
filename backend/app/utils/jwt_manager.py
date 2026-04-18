@@ -38,7 +38,7 @@ class JWTManager:
         )
         return encoded_jwt
     
-    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+    def verify_token(self, token: str, expected_type: str = "access") -> Optional[Dict[str, Any]]:
         try:
             # Decode and verify the token
             payload = jwt.decode(
@@ -48,8 +48,8 @@ class JWTManager:
             )
             
             # Check if token is expired (jwt.decode does this automatically)
-            # Check token type if needed
-            if payload.get("type") != "access":
+            # Check token type matches expected type
+            if payload.get("type") != expected_type:
                 return None
                 
             return payload
@@ -67,10 +67,35 @@ class JWTManager:
         
         return self.create_access_token(data)
     
-    def create_upload_token(self, url_slug: str) -> str:
-        """Takes the URL slug as an arguement."""
-        data = {"url_slug": url_slug}
-        return self.create_access_token(data)
+    def create_upload_token(
+        self,
+        url_slug: str,
+        folder_id: str,
+        folder_name: str,
+        google_access_token: str,
+        ) -> str:
+        """
+        Creates an upload token with a shorter TTL (15 minutes) for security.
+        Contains the Google access token, folder ID, and URL slug.
+        """
+        data = {
+            "url_slug": url_slug,
+            "folder_id": folder_id,
+            "folder_name": folder_name,
+            "google_access_token": google_access_token,
+        }
+        
+        # Use shorter expiration for upload tokens (15 minutes)
+        to_encode = data.copy()
+        expire = datetime.now() + timedelta(minutes=15)
+        
+        to_encode.update({
+            "exp": expire,
+            "iat": datetime.now(),
+            "type": "upload"  # Different type to distinguish from user tokens
+        })
+        
+        return jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
     
     def extract_user_id(self, token: str) -> Optional[int]:
         payload = self.verify_token(token)

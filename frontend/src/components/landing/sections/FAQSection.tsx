@@ -10,6 +10,18 @@ const faqs = [
         answer: 'Yes, DriveGate is completely free for personal use. We believe secure file transfers should be accessible to everyone.',
     },
     {
+        question: 'What authenticator app should I use?',
+        answer: 'We recommend 2FAS, Google Authenticator, Authy, or Microsoft Authenticator. All four are free, available on iOS and Android, and work perfectly with DriveGate.',
+    },
+    {
+        question: 'How do I scan the QR code?',
+        answer: 'Open your authenticator app and look for a "+" or "Add account" button. Choose "Scan QR code" and point your phone\'s camera at the code shown on screen. The app will automatically add DriveGate and start generating 6-digit codes.',
+    },
+    {
+        question: 'Can I use DriveGate on my phone?',
+        answer: 'Yes! You can visit your upload URL from any device with a web browser, including your phone. You\'ll just need to manually enter the 6-digit code from your authenticator app since you can\'t scan a QR code on the same device.',
+    },
+    {
         question: 'What happens if I lose my phone?',
         answer: 'No problem! Log in with Google on your dashboard, then either: (1) Rescan the same QR code to add it to a new authenticator app, or (2) Reset your TOTP to generate a completely new code. The old codes will stop working after a reset.',
     },
@@ -109,7 +121,7 @@ export default function FAQSection() {
                                 </Typography>
                             </AccordionSummary>
                             <AccordionDetails sx={{ px: 3, pb: 3 }}>
-                                <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
+                                <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.7, textAlign: { xs: 'justify', md: 'left' } }}>
                                     {faq.answer}
                                 </Typography>
                             </AccordionDetails>

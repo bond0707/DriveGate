@@ -1,19 +1,21 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
-    DB_SERVICE_CA_PATH: str
+    ENV_TYPE: str
+    CORS_ORIGIN: str
+    BACKEND_API_KEY: str
 
+    DB_CA_CERT: str
+    DATABASE_URL: str
+    DB_FIELD_ENCRYPTION_KEY: str
+ 
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int
 
-    ENCRYPTION_KEY: str
-
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str
-
     GOOGLE_DRIVE_UPLOAD_REQUEST_URL: str
 
     APP_NAME: str

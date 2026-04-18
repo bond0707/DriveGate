@@ -1,8 +1,8 @@
 'use client';
 import { useState, forwardRef, useImperativeHandle } from 'react';
-import { Box, Container, Typography } from '@mui/material';
+import { Box, Container, Typography, Paper, Tooltip } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, QrCode, Upload, LogIn, Link as LinkIcon, FolderPlus } from 'lucide-react';
+import { ChevronDown, QrCode, Upload, LogIn, Link as LinkIcon, FolderPlus, Smartphone } from 'lucide-react';
 import AnimatedSection from '../../AnimatedSection';
 
 const MotionBox = motion.create(Box);
@@ -26,7 +26,7 @@ const tutorialSteps = [
         step: 3,
         title: 'Choose your URL',
         description: 'Pick a custom URL slug for your upload page.',
-        example: 'drivegate.dev/my-uploads',
+        example: 'drivegate.app/my-uploads',
         icon: LinkIcon,
         color: '#5C6BC0',
     },
@@ -52,6 +52,7 @@ export interface TutorialSectionHandle {
 
 const TutorialSection = forwardRef<TutorialSectionHandle>((_, ref) => {
     const [activeStep, setActiveStep] = useState(0);
+    const [totpInfoOpen, setTotpInfoOpen] = useState(false);
 
     useImperativeHandle(ref, () => ({
         resetStep: () => setActiveStep(0),
@@ -109,13 +110,72 @@ const TutorialSection = forwardRef<TutorialSectionHandle>((_, ref) => {
                         sx={{
                             color: 'text.secondary',
                             textAlign: 'center',
-                            mb: 6,
+                            mb: 4,
                             maxWidth: 600,
                             mx: 'auto',
                         }}
                     >
                         One-time setup takes just a few minutes. After that, upload from any device instantly.
                     </Typography>
+                </AnimatedSection>
+
+                {/* Prerequisites and TOTP Info */}
+                <AnimatedSection delay={0.1}>
+                    <Box sx={{ maxWidth: 700, mx: 'auto', mb: 4 }}>
+                        {/* Before You Start */}
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                p: 2.5,
+                                borderRadius: 3,
+                                bgcolor: 'rgba(0, 137, 123, 0.08)',
+                                border: '1px solid',
+                                borderColor: 'rgba(0, 137, 123, 0.2)',
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                                <Smartphone size={18} color="#00897B" />
+                                <Typography variant="subtitle2" fontWeight={700} color="primary.main">
+                                    Before You Start
+                                </Typography>
+                            </Box>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+                                Download a{' '}
+                                <Tooltip
+                                    title={
+                                        <Box sx={{ p: 0.5 }}>
+                                            <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                                                Time-based One-Time Password
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                                                The same technology banks use for 2FA. Codes change every 30 seconds.
+                                            </Typography>
+                                        </Box>
+                                    }
+                                    arrow
+                                    placement="top"
+                                >
+                                    <Box
+                                        component="span"
+                                        sx={{
+                                            fontWeight: 600,
+                                            color: 'primary.main',
+                                            cursor: 'help',
+                                            borderBottom: '1px dashed',
+                                            borderColor: 'primary.main',
+                                        }}
+                                    >
+                                        TOTP authenticator app
+                                    </Box>
+                                </Tooltip>
+                                {' '}on your phone:{' '}
+                                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>2FAS</Box>,{' '}
+                                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>Google Authenticator</Box>,{' '}
+                                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>Authy</Box>, or{' '}
+                                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>Microsoft Authenticator</Box>.
+                            </Typography>
+                        </Paper>
+                    </Box>
                 </AnimatedSection>
 
                 {/* Step indicators */}

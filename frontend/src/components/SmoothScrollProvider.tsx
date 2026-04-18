@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, startTransition, ReactNode } from 'react';
 import Lenis from 'lenis';
 
 interface SmoothScrollContextType {
@@ -9,7 +9,7 @@ interface SmoothScrollContextType {
 
 const SmoothScrollContext = createContext<SmoothScrollContextType>({
   lenis: null,
-  scrollTo: () => {},
+  scrollTo: () => { },
 });
 
 export const useSmoothScroll = () => useContext(SmoothScrollContext);
@@ -19,10 +19,10 @@ interface SmoothScrollProviderProps {
 }
 
 export default function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
-  const lenisRef = useRef<Lenis | null>(null);
+  const [lenis, setLenis] = useState<Lenis | null>(null);
 
   useEffect(() => {
-    const lenis = new Lenis({
+    const lenisInstance = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: 'vertical',
@@ -31,26 +31,28 @@ export default function SmoothScrollProvider({ children }: SmoothScrollProviderP
       touchMultiplier: 2,
     });
 
-    lenisRef.current = lenis;
+    startTransition(() => {
+      setLenis(lenisInstance);
+    });
 
     function raf(time: number) {
-      lenis.raf(time);
+      lenisInstance.raf(time);
       requestAnimationFrame(raf);
     }
 
     requestAnimationFrame(raf);
 
     return () => {
-      lenis.destroy();
+      lenisInstance.destroy();
     };
   }, []);
 
-  const scrollTo = (target: string | number | HTMLElement) => {
-    lenisRef.current?.scrollTo(target, { offset: -80 });
-  };
+  const scrollTo = useCallback((target: string | number | HTMLElement) => {
+    lenis?.scrollTo(target, { offset: -80 });
+  }, [lenis]);
 
   return (
-    <SmoothScrollContext.Provider value={{ lenis: lenisRef.current, scrollTo }}>
+    <SmoothScrollContext.Provider value={{ lenis, scrollTo }}>
       {children}
     </SmoothScrollContext.Provider>
   );

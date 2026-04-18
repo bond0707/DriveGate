@@ -20,7 +20,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
     login: (token: string, userData: User) => void;
-    logout: () => void;
+    signOut: () => void;
     checkAuth: () => Promise<void>;
 }
 
@@ -33,7 +33,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         checkAuth();
-    }, []);
+
+        // Listen for storage changes from other tabs (for multi-tab sign out sync)
+        const handleStorageChange = (event: StorageEvent) => {
+            if (event.key === 'token' && event.newValue === null) {
+                // Token was removed in another tab, sync sign out here
+                setUser(null);
+                router.push('/login');
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, [router]);
 
     const checkAuth = async () => {
         try {
@@ -58,11 +70,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const login = (token: string, userData: User) => {
         localStorage.setItem('token', token);
         setUser(userData);
-        router.push('/dashboard');
+
+        // Determine where to redirect based on user's setup status
+        // Order: TOTP setup → Upload link → Folder setup → Dashboard
+        if (!userData.totp_secret) {
+            localStorage.setItem('totp_mode', 'first');
+            router.push('/setup-totp');
+        } else if (!userData.url_slug) {
+            router.push('/setup-link');
+        } else if (!userData.folder_id) {
+            router.push('/setup-folder');
+        } else {
+            router.push('/dashboard');
+        }
     };
 
-    const logout = () => {
+    const signOut = () => {
+        // Complete session cleanup - remove all app-related data
         localStorage.removeItem('token');
+        localStorage.removeItem('totp_mode');
+        localStorage.removeItem('folder_mode');
+        localStorage.removeItem('skip_totp_setup');
+        localStorage.removeItem('skip_folder_setup');
+
         setUser(null);
         router.push('/login');
     };
@@ -73,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: !!user,
             isLoading,
             login,
-            logout,
+            signOut,
             checkAuth
         }}>
             {children}

@@ -113,7 +113,7 @@ export default function FeaturesSection() {
                                 <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
                                     {feature.title}
                                 </Typography>
-                                <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
+                                <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.7, textAlign: { xs: 'justify', md: 'left' } }}>
                                     {feature.description}
                                 </Typography>
                             </MotionPaper>

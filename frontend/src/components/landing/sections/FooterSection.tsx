@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { Box, Container, Typography, Button, Link, IconButton, Paper } from '@mui/material';
-import { GitHub, Close } from '@mui/icons-material';
+import { Box, Container, Typography, Button, Link, Paper } from '@mui/material';
+import { GitHub, Mail } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useColorScheme } from '@mui/material/styles';
 import Image from 'next/image';
@@ -32,7 +32,12 @@ export default function FooterSection() {
                         }}
                     >
                         {/* Legal Links */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: { xs: 2, sm: 3 },
+                            flexDirection: { xs: 'column', sm: 'row' },
+                        }}>
                             <Link
                                 href="/privacy"
                                 sx={{
@@ -44,7 +49,7 @@ export default function FooterSection() {
                             >
                                 Privacy Policy
                             </Link>
-                            <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>•</Typography>
+                            <Typography color="text.secondary" sx={{ fontSize: '0.875rem', display: { xs: 'none', sm: 'block' } }}>•</Typography>
                             <Link
                                 href="/terms"
                                 sx={{
@@ -56,7 +61,7 @@ export default function FooterSection() {
                             >
                                 Terms of Service
                             </Link>
-                            <Typography color="text.secondary" sx={{ fontSize: '0.875rem' }}>•</Typography>
+                            <Typography color="text.secondary" sx={{ fontSize: '0.875rem', display: { xs: 'none', sm: 'block' } }}>•</Typography>
                             <Link
                                 component="button"
                                 onClick={() => setContactOpen(true)}
@@ -185,6 +190,24 @@ export default function FooterSection() {
                                         koffandaff
                                     </Button>
                                 </Box>
+
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 2.5, mb: 2.5 }}>
+                                    Got questions or feedback? Send an email here!
+                                </Typography>
+                                <Button
+                                    variant="outlined"
+                                    fullWidth
+                                    startIcon={<Mail />}
+                                    href="mailto:support@drivegate.app"
+                                    sx={{
+                                        textTransform: 'none',
+                                        fontWeight: 600,
+                                        borderRadius: 100,
+                                        py: 1.5,
+                                    }}
+                                >
+                                    support@drivegate.app
+                                </Button>
                             </MotionPaper>
                         </Box>
                     </>

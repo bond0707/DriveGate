@@ -67,7 +67,7 @@ function HeroVisual({ otpDigits }: { otpDigits: string[] }) {
                 }}
                 transition={{ duration: 0.5 }}
                 sx={{
-                    width: { xs: 240, sm: 280, md: 380 },
+                    width: { xs: 300, sm: 340, md: 380 },
                     height: { xs: 240, sm: 280, md: 380 },
                     borderRadius: { xs: 4, md: 6 },
                     background: 'linear-gradient(135deg, rgba(0, 137, 123, 0.1) 0%, rgba(92, 107, 192, 0.1) 100%)',
@@ -79,7 +79,7 @@ function HeroVisual({ otpDigits }: { otpDigits: string[] }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: { xs: 2, md: 3 },
-                    p: { xs: 2.5, md: 4 },
+                    p: { xs: 3, md: 4 },
                     transition: 'border-color 0.3s ease',
                     overflow: 'hidden',
                     position: 'relative',
@@ -213,7 +213,7 @@ export default function HeroSection({ onVisibilityChange, onHowItWorksClick }: H
                             sx={{
                                 fontSize: { xs: '2.5rem', sm: '3rem', md: '3.5rem', lg: '4rem' },
                                 fontWeight: 800,
-                                lineHeight: 1.1,
+                                lineHeight: 1.3,
                                 mb: 3,
                                 color: 'text.primary',
                             }}
@@ -231,9 +231,10 @@ export default function HeroSection({ onVisibilityChange, onHowItWorksClick }: H
                                     mb: { xs: 3, md: 4 },
                                     maxWidth: 500,
                                     fontSize: { xs: '0.95rem', md: '1.125rem' },
+                                    textAlign: { xs: 'justify', md: 'left' },
                                 }}
                             >
-                                Upload files to your Google Drive from any device without ever typing your password. Just scan, verify, and drop.
+                                Upload files to your Google Drive from any device using just a 6-digit code from your authenticator app. No login needed on untrusted devices.
                             </Typography>
                         </AnimatedSection>
 

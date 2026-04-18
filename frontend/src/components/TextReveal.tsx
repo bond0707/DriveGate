@@ -1,7 +1,6 @@
 'use client';
 import { motion, Variants } from 'framer-motion';
 import { Typography, TypographyProps } from '@mui/material';
-import { ReactNode } from 'react';
 
 interface TextRevealProps extends Omit<TypographyProps, 'children'> {
     children: string;

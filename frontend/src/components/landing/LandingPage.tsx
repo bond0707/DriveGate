@@ -1,15 +1,17 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
-import { Box, Container, Typography, Button, useColorScheme, Paper, IconButton } from '@mui/material';
+import { useState, useRef, useEffect, startTransition } from 'react';
+import { Box, Container, Typography, Button, useColorScheme, Paper } from '@mui/material';
 import { useScroll, useMotionValueEvent, motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Close, LinkOff } from '@mui/icons-material';
+import { LinkOff } from '@mui/icons-material';
 import Image from 'next/image';
 import ThemeToggle from '../ThemeToggle';
 import {
     HeroSection,
+    WhatIsSection,
     ProblemSolutionSection,
     FeaturesSection,
+    UseCasesSection,
     TutorialSection,
     TrustSection,
     FAQSection,
@@ -31,11 +33,14 @@ export default function LandingPage() {
     // Check for invalid_link query parameter
     useEffect(() => {
         if (searchParams.get('invalid_link') === 'true') {
-            setShowInvalidLinkMessage(true);
+            // Use startTransition to avoid lint warning about setState in effect
+            startTransition(() => {
+                setShowInvalidLinkMessage(true);
+            });
             // Clean URL without reloading the page
             router.replace('/', { scroll: false });
-            // Auto-dismiss after 8 seconds
-            const timer = setTimeout(() => setShowInvalidLinkMessage(false), 8000);
+            // Auto-dismiss after 5 seconds
+            const timer = setTimeout(() => setShowInvalidLinkMessage(false), 5000);
             return () => clearTimeout(timer);
         }
     }, [searchParams, router]);
@@ -48,14 +53,18 @@ export default function LandingPage() {
     useEffect(() => {
         if (heroButtonVisible) {
             // Scrolling up: hide second toggle immediately, show first after delay
-            setSecondToggleVisible(false);
+            startTransition(() => {
+                setSecondToggleVisible(false);
+            });
             const timer = setTimeout(() => {
                 setFirstToggleVisible(true);
             }, 300);
             return () => clearTimeout(timer);
         } else {
             // Scrolling down: hide first toggle immediately, show second after delay
-            setFirstToggleVisible(false);
+            startTransition(() => {
+                setFirstToggleVisible(false);
+            });
             const timer = setTimeout(() => {
                 setSecondToggleVisible(true);
             }, 50); // Small delay to let first toggle disappear
@@ -205,8 +214,10 @@ export default function LandingPage() {
             {/* Main Content */}
             <main>
                 <HeroSection onVisibilityChange={setHeroButtonVisible} onHowItWorksClick={handleHowItWorksClick} />
+                <WhatIsSection />
                 <ProblemSolutionSection />
                 <FeaturesSection />
+                <UseCasesSection />
                 <TutorialSection ref={tutorialRef} />
                 <TrustSection />
                 <FAQSection />
@@ -214,63 +225,92 @@ export default function LandingPage() {
 
             <FooterSection />
 
-            {/* Invalid Link Notification */}
+            {/* Invalid Link Modal */}
             <AnimatePresence>
                 {showInvalidLinkMessage && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                        transition={{ duration: 0.3, ease: 'easeOut' }}
-                        style={{
-                            position: 'fixed',
-                            bottom: 24,
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            zIndex: 1100,
-                            width: 'calc(100% - 32px)',
-                            maxWidth: 400,
-                        }}
-                    >
-                        <Paper
-                            elevation={8}
+                    <>
+                        {/* Backdrop with blur */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowInvalidLinkMessage(false)}
+                            style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                zIndex: 1300,
+                                backdropFilter: 'blur(8px)',
+                                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                            }}
+                        />
+
+                        {/* Modal Card */}
+                        <Box
                             sx={{
-                                p: 2,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 2,
-                                borderRadius: 3,
-                                bgcolor: 'background.paper',
-                                border: '1px solid',
-                                borderColor: 'divider',
+                                position: 'fixed',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                zIndex: 1400,
+                                width: { xs: 'calc(100% - 32px)', sm: 'auto' },
+                                maxWidth: 380,
                             }}
                         >
-                            <Box sx={{
-                                p: 1,
-                                borderRadius: 2,
-                                bgcolor: '#FFF3E0',
-                                color: '#E65100',
-                                display: 'flex',
-                            }}>
-                                <LinkOff />
-                            </Box>
-                            <Box sx={{ flex: 1 }}>
-                                <Typography variant="subtitle2" fontWeight={600}>
-                                    Link not found
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    That upload link doesn't exist. Please check the URL and try again.
-                                </Typography>
-                            </Box>
-                            <IconButton
-                                size="small"
-                                onClick={() => setShowInvalidLinkMessage(false)}
-                                sx={{ color: 'text.secondary' }}
+                            <motion.div
+                                initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                exit={{ scale: 0.8, opacity: 0, y: 20 }}
+                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                             >
-                                <Close fontSize="small" />
-                            </IconButton>
-                        </Paper>
-                    </motion.div>
+                                <Paper
+                                    elevation={24}
+                                    sx={{
+                                        p: 4,
+                                        borderRadius: 4,
+                                        textAlign: 'center',
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                    }}
+                                >
+                                    <Box sx={{
+                                        width: 80,
+                                        height: 80,
+                                        borderRadius: '50%',
+                                        bgcolor: '#FFF3E0',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        mx: 'auto',
+                                        mb: 3,
+                                    }}>
+                                        <LinkOff sx={{ fontSize: 40, color: '#E65100' }} />
+                                    </Box>
+
+                                    <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                                        Link Not Found
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                                        That upload link doesn&apos;t exist. Please check the URL and try again.
+                                    </Typography>
+
+                                    <Button
+                                        variant="outlined"
+                                        onClick={() => setShowInvalidLinkMessage(false)}
+                                        sx={{
+                                            borderRadius: 100,
+                                            px: 4,
+                                            py: 1,
+                                        }}
+                                    >
+                                        Got it
+                                    </Button>
+                                </Paper>
+                            </motion.div>
+                        </Box>
+                    </>
                 )}
             </AnimatePresence>
         </Box>

@@ -9,7 +9,8 @@ This router handles Time-Based One-Time Password (TOTP) setup, storage, and veri
 This endpoint generates a new TOTP secret and provisioning URI for initial setup.
 
 * **HTTP Method:** `GET`
-* **Endpoint URL:** `http://localhost:8000/totp/setup`
+* **Endpoint URL:** `http://localhost:8000/totp/secret`
+* **Authentication:** Required
 * **Request Headers:**
 
   ```http
@@ -20,7 +21,7 @@ This endpoint generates a new TOTP secret and provisioning URI for initial setup
   ```json
   {
     "totp_secret": "JBSWY3DPEHPK3PXP",
-    "provisioning_uri": "otpauth://totp/YourApp:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=YourApp"
+    "provisioning_uri": "otpauth://totp/DriveGate:tony@starkindustries.com?secret=JBSWY3DPEHPK3PXP&issuer=DriveGate"
   }
   ```
 
@@ -30,8 +31,8 @@ This endpoint generates a new TOTP secret and provisioning URI for initial setup
 
 This endpoint returns the current TOTP secret and provisioning URI for users who need to rescan their QR code.
 
-* **HTTP Method:**`GET`
-* **Endpoint:**`/totp/rescan`
+* **HTTP Method:** `GET`
+* **Endpoint:** `http://localhost:8000/totp/secret/current`
 * **Authentication:** Required
 
 #### Headers
@@ -45,7 +46,7 @@ Authorization: Bearer <ACCESS_TOKEN>
 ```json
 {
   "totp_secret": "JBSWY3DPEHPK3PXP",
-  "provisioning_uri": "otpauth://totp/YourApp:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=YourApp"
+  "provisioning_uri": "otpauth://totp/DriveGate:tony@starkindustries.com?secret=JBSWY3DPEHPK3PXP&issuer=DriveGate"
 }
 ```
 
@@ -57,10 +58,19 @@ Authorization: Bearer <ACCESS_TOKEN>
 
 ---
 
-## **Test Case 3: Verify and Store TOTP Secret**
+### **Test Case 3: Verify and Store TOTP Secret**
+
+Verifies the user's TOTP code against a provided secret and stores the secret in the database. Proves you're not a Skrull.
 
 * **HTTP Method:** `POST`
-* **Endpoint URL:** `http://localhost:8000/totp/store`
+* **Endpoint URL:** `http://localhost:8000/totp/secret`
+* **Authentication:** Required
+* **Request Headers:**
+
+  ```http
+  Authorization: Bearer <ACCESS_TOKEN>
+  Content-Type: application/json
+  ```
 * **Body:**
 
   ```json
@@ -69,11 +79,18 @@ Authorization: Bearer <ACCESS_TOKEN>
     "user_totp_secret": "JBSWY3DPEHPK3PXP"
   }
   ```
-* **Response (200):**
+* **Expected Successful Response (200):**
 
   ```json
   {
     "message": "TOTP Secret successfully stored to DB."
+  }
+  ```
+* **Expected Error Response (400):**
+
+  ```json
+  {
+    "detail": "TOTP is invalid!"
   }
   ```
 
@@ -81,8 +98,11 @@ Authorization: Bearer <ACCESS_TOKEN>
 
 ### **Test Case 4: Verify TOTP and Get Upload Token (Public)**
 
+This public endpoint verifies a TOTP code for a given URL slug and returns a short-lived upload token. This is the gateway to the upload flow — no JWT required, just the magic numbers.
+
 * **HTTP Method:** `POST`
 * **Endpoint URL:** `http://localhost:8000/totp/verify`
+* **Authentication:** ❌ Not required
 * **Body:**
 
   ```json
@@ -91,7 +111,7 @@ Authorization: Bearer <ACCESS_TOKEN>
     "url_slug": "dream_within_a_dream"
   }
   ```
-* **Response (200):**
+* **Expected Successful Response (200):**
 
   ```json
   {
@@ -99,11 +119,31 @@ Authorization: Bearer <ACCESS_TOKEN>
   }
   ```
 
+  The upload token JWT payload contains:
+  ```json
+  {
+    "url_slug": "dream_within_a_dream",
+    "folder_id": "1AbCdEfGhIjKlMnOpQrStUvWxYz",
+    "folder_name": "My Upload Folder",
+    "google_access_token": "<GOOGLE_ACCESS_TOKEN>",
+    "type": "upload",
+    "exp": 1707900000
+  }
+  ```
+
+* **Expected Error Responses:**
+  * **401 Unauthorized** – Invalid TOTP code
+  * **403 Forbidden** – Refresh token revoked, user needs to re-authenticate
+  * **404 Not Found** – Drive folder ID or refresh token missing
+  * **429 Too Many Requests** – Rate limited (e.g., `"Too many attempts for this slug. Blocked for 2m 30s."`)
+  * **500 Internal Server Error** – Database error
+
 ---
 
 ## Notes
 
 * TOTP secrets are stored encrypted in the database.
 * The provisioning URI can be used to generate a QR code for authenticator apps.
-* Upload tokens are short-lived JWTs specifically for file upload operations.
+* Upload tokens are short-lived JWTs (15 minutes) specifically for file upload operations.
 * The `/verify` endpoint is public and does not require authentication.
+* The `/verify` endpoint is rate-limited per IP + URL slug combination to prevent brute-force attacks.

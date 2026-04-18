@@ -12,10 +12,11 @@ from app.services.totp_service import totp_service
 from app.services.user_service import user_service
 from app.utils.rate_limiter import totp_rate_limiter
 from app.utils.dependencies import get_current_user
+from app.services.google_auth_service import google_auth_service, InvalidRefreshTokenError
 
 totp_router = APIRouter()
 
-@totp_router.get("/setup", response_model=TOTPSecretResponse, status_code=status.HTTP_200_OK)
+@totp_router.get("/secret", response_model=TOTPSecretResponse, status_code=status.HTTP_200_OK)
 async def return_random_totp_secret_and_uri(user: UserModel = Depends(get_current_user)):
     try:
         totp_secret = totp_service.generate_totp_secret()
@@ -30,7 +31,7 @@ async def return_random_totp_secret_and_uri(user: UserModel = Depends(get_curren
             detail      = str(e)
         )
 
-@totp_router.get("/rescan", response_model=TOTPSecretResponse, status_code=status.HTTP_200_OK)
+@totp_router.get("/secret/current", response_model=TOTPSecretResponse, status_code=status.HTTP_200_OK)
 async def return_current_totp_secret_and_uri(
     user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -55,7 +56,7 @@ async def return_current_totp_secret_and_uri(
             detail      = str(e)
         )
 
-@totp_router.post("/store", response_model=MessageResponse, status_code=status.HTTP_200_OK)
+@totp_router.post("/secret", response_model=MessageResponse, status_code=status.HTTP_200_OK)
 async def verify_and_store_totp_secret(
     request: VerifyAndStoreTOTPRequest,
     user: UserModel = Depends(get_current_user),
@@ -117,8 +118,13 @@ async def verify_totp(
         )
 
     try:
-        # Fetch the TOTP secret associated with the provided URL slug
-        totp_secret = await user_service.get_totp_secret_by_url_slug(db, request.url_slug)
+        # Fetch TOTP secret AND credentials in a single query (optimization)
+        data = await user_service.get_totp_and_credentials_by_url_slug(db, request.url_slug)
+
+        if data is None:
+            raise Exception(f"No data found for url_slug: {request.url_slug}")
+
+        totp_secret, folder_id, folder_name, refresh_token = data
 
         if totp_secret is None:
             raise Exception(f"No totp_secret found for url_slug: {request.url_slug}")
@@ -133,13 +139,37 @@ async def verify_totp(
             )
 
         # On successful verification, reset the failure count for this IP + Slug
-        # This allows the user to make fresh attempts if they were close to being blocked
         totp_rate_limiter.reset_attempts(ip, request.url_slug)
-        
+
+        if not folder_id:
+            raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail      = "Drive Folder ID not found!"
+            )
+
+        if not refresh_token:
+            raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail      = "Google Refresh Token not found!"
+            )
+
+        google_access_token = await google_auth_service.get_access_token(refresh_token)
+
         # Generate and return a one-time upload token
-        return {"upload_token": jwt_manager.create_upload_token(request.url_slug)}
+        jwt_upload_token = jwt_manager.create_upload_token(
+            url_slug = request.url_slug,
+            folder_id = folder_id,
+            folder_name = folder_name,
+            google_access_token = google_access_token
+        )
+        return {"upload_token": jwt_upload_token}
     except HTTPException:
         raise
+    except InvalidRefreshTokenError as e:
+        raise HTTPException(
+            status_code = status.HTTP_403_FORBIDDEN,
+            detail      = str(e)
+        )
     except Exception as e:
         raise HTTPException(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
