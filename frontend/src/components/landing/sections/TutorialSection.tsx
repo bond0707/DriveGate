@@ -7,6 +7,12 @@ import AnimatedSection from '../../AnimatedSection';
 
 const MotionBox = motion.create(Box);
 
+const slideVariants = {
+    enter: (dir: number) => ({ opacity: 0, x: dir * 50 }),
+    center: { opacity: 1, x: 0 },
+    exit: (dir: number) => ({ opacity: 0, x: dir * -50 }),
+};
+
 const tutorialSteps = [
     {
         step: 1,
@@ -52,7 +58,7 @@ export interface TutorialSectionHandle {
 
 const TutorialSection = forwardRef<TutorialSectionHandle>((_, ref) => {
     const [activeStep, setActiveStep] = useState(0);
-    const [totpInfoOpen, setTotpInfoOpen] = useState(false);
+    const [direction, setDirection] = useState(1); // 1 = forward, -1 = backward
 
     useImperativeHandle(ref, () => ({
         resetStep: () => setActiveStep(0),
@@ -60,12 +66,14 @@ const TutorialSection = forwardRef<TutorialSectionHandle>((_, ref) => {
 
     const handleNext = () => {
         if (activeStep < tutorialSteps.length - 1) {
+            setDirection(1);
             setActiveStep(activeStep + 1);
         }
     };
 
     const handlePrev = () => {
         if (activeStep > 0) {
+            setDirection(-1);
             setActiveStep(activeStep - 1);
         }
     };
@@ -192,7 +200,10 @@ const TutorialSection = forwardRef<TutorialSectionHandle>((_, ref) => {
                         {tutorialSteps.map((step, index) => (
                             <MotionBox
                                 key={index}
-                                onClick={() => setActiveStep(index)}
+                                onClick={() => {
+                                    setDirection(index > activeStep ? 1 : -1);
+                                    setActiveStep(index);
+                                }}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 animate={{
@@ -265,13 +276,15 @@ const TutorialSection = forwardRef<TutorialSectionHandle>((_, ref) => {
 
                         {/* Content Card */}
                         <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <AnimatePresence mode="wait">
+                            <AnimatePresence mode="wait" custom={direction}>
                                 <MotionBox
                                     key={activeStep}
-                                    initial={{ opacity: 0, y: 30 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -30 }}
-                                    transition={{ duration: 0.4, ease: 'easeOut' }}
+                                    custom={direction}
+                                    variants={slideVariants}
+                                    initial="enter"
+                                    animate="center"
+                                    exit="exit"
+                                    transition={{ duration: 0.35, ease: 'easeInOut' }}
                                     sx={{
                                         p: { xs: 3, md: 6 },
                                         borderRadius: { xs: 3, md: 4 },

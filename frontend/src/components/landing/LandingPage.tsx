@@ -58,7 +58,7 @@ export default function LandingPage() {
             });
             const timer = setTimeout(() => {
                 setFirstToggleVisible(true);
-            }, 300);
+            }, 500);
             return () => clearTimeout(timer);
         } else {
             // Scrolling down: hide first toggle immediately, show second after delay
@@ -67,7 +67,7 @@ export default function LandingPage() {
             });
             const timer = setTimeout(() => {
                 setSecondToggleVisible(true);
-            }, 50); // Small delay to let first toggle disappear
+            }, 100); // Small delay to let first toggle disappear
             return () => clearTimeout(timer);
         }
     }, [heroButtonVisible]);
