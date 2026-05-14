@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef, useEffect, startTransition } from 'react';
-import { Container, Typography, Button, useColorScheme, Paper, Box } from '@mui/material';
-import { m, AnimatePresence } from 'framer-motion';
+import { Box, Container, Typography, Button, useColorScheme, Paper } from '@mui/material';
+import { useScroll, useMotionValueEvent, motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { LinkOff } from '@mui/icons-material';
 import Image from 'next/image';
@@ -33,49 +33,55 @@ export default function LandingPage() {
     // Check for invalid_link query parameter
     useEffect(() => {
         if (searchParams.get('invalid_link') === 'true') {
+            // Use startTransition to avoid lint warning about setState in effect
             startTransition(() => {
                 setShowInvalidLinkMessage(true);
             });
+            // Clean URL without reloading the page
             router.replace('/', { scroll: false });
+            // Auto-dismiss after 5 seconds
             const timer = setTimeout(() => setShowInvalidLinkMessage(false), 5000);
             return () => clearTimeout(timer);
         }
     }, [searchParams, router]);
 
-    useEffect(() => {
-        const handleScroll = () => setScrolled(window.scrollY > 50);
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+    useMotionValueEvent(useScroll().scrollY, "change", (latest) => {
+        setScrolled(latest > 50);
+    });
 
     // Handle toggle visibility with delays for smooth transitions
     useEffect(() => {
         if (heroButtonVisible) {
+            // Scrolling up: hide second toggle immediately, show first after delay
             startTransition(() => {
                 setSecondToggleVisible(false);
             });
             const timer = setTimeout(() => {
                 setFirstToggleVisible(true);
-            }, 300);
+            }, 500);
             return () => clearTimeout(timer);
         } else {
+            // Scrolling down: hide first toggle immediately, show second after delay
             startTransition(() => {
                 setFirstToggleVisible(false);
             });
             const timer = setTimeout(() => {
                 setSecondToggleVisible(true);
-            }, 50);
+            }, 100); // Small delay to let first toggle disappear
             return () => clearTimeout(timer);
         }
     }, [heroButtonVisible]);
 
     const handleHowItWorksClick = () => {
+        // Reset tutorial to first step
         tutorialRef.current?.resetStep();
+
+        // Scroll to tutorial section with offset to center content
         const tutorialElement = document.getElementById('tutorial');
         if (tutorialElement) {
             const elementRect = tutorialElement.getBoundingClientRect();
             const absoluteElementTop = elementRect.top + window.pageYOffset;
-            const offset = window.innerHeight * 0.15;
+            const offset = window.innerHeight * 0.15; // 15% from top for better centering with title visible
             window.scrollTo({
                 top: absoluteElementTop - offset,
                 behavior: 'smooth'
@@ -84,12 +90,38 @@ export default function LandingPage() {
     };
 
     return (
-        <Box sx={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', bgcolor: 'background.default' }}>
+        <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
             {/* Decorative background gradients */}
-            <Box sx={{ position: 'fixed', top: '5%', left: '-15%', width: '50%', height: '50%', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, filter: 'blur(80px)', background: 'radial-gradient(circle,rgba(0,137,123,0.12) 0%, transparent 70%)' }} />
-            <Box sx={{ position: 'fixed', bottom: '10%', right: '-10%', width: '45%', height: '45%', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, filter: 'blur(100px)', background: 'radial-gradient(circle,rgba(92,107,192,0.10) 0%, transparent 70%)' }} />
+            <Box
+                sx={{
+                    position: 'fixed',
+                    top: '5%',
+                    left: '-15%',
+                    width: '50%',
+                    height: '50%',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(0, 137, 123, 0.12) 0%, transparent 70%)',
+                    filter: 'blur(80px)',
+                    pointerEvents: 'none',
+                    zIndex: 0,
+                }}
+            />
+            <Box
+                sx={{
+                    position: 'fixed',
+                    bottom: '10%',
+                    right: '-10%',
+                    width: '45%',
+                    height: '45%',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(92, 107, 192, 0.10) 0%, transparent 70%)',
+                    filter: 'blur(100px)',
+                    pointerEvents: 'none',
+                    zIndex: 0,
+                }}
+            />
 
-            {/* Header — responsive: absolute on xs, fixed on md+ */}
+            {/* Header - scrolls away on mobile, fixed on desktop */}
             <Box
                 component="header"
                 sx={{
@@ -100,11 +132,30 @@ export default function LandingPage() {
                     zIndex: 1000,
                     py: 2,
                     px: { xs: 2, md: 4 },
-                    transition: 'all 0.3s',
-                    backdropFilter: { md: 'blur(12px)' },
-                    backgroundColor: scrolled
-                        ? { md: 'rgba(var(--mui-palette-background-defaultChannel) / 0.8)' }
-                        : { md: 'rgba(var(--mui-palette-background-defaultChannel) / 0.4)' },
+                    transition: 'all 0.3s ease',
+                    backdropFilter: {
+                        xs: 'none',
+                        md: 'blur(12px)'
+                    },
+                    bgcolor: {
+                        xs: 'transparent',
+                        md: scrolled
+                            ? 'rgba(var(--mui-palette-background-defaultChannel) / 0.8)'
+                            : 'rgba(var(--mui-palette-background-defaultChannel) / 0.4)'
+                    },
+                    borderBottom: 0,
+                    // Gradient mask for smooth blur edge
+                    '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: -20,
+                        height: 20,
+                        background: 'linear-gradient(to bottom, rgba(var(--mui-palette-background-defaultChannel) / 0.4), transparent)',
+                        pointerEvents: 'none',
+                        display: { xs: 'none', md: 'block' },
+                    },
                 }}
             >
                 <Container maxWidth="lg">
@@ -115,23 +166,24 @@ export default function LandingPage() {
                                 alt="DriveGate"
                                 width={32}
                                 height={32}
-                                priority
                             />
                             <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                 DriveGate
                             </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            {/* Theme toggle visible when hero button is visible (with delay on reappear) */}
                             {firstToggleVisible && <ThemeToggle />}
 
+                            {/* Get Started + Theme toggle that slide in together (with delay) */}
                             <AnimatePresence>
                                 {secondToggleVisible && (
-                                    <m.div
+                                    <motion.div
                                         initial={{ x: 100, opacity: 0 }}
                                         animate={{ x: 0, opacity: 1 }}
                                         exit={{ x: 100, opacity: 0 }}
                                         transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                        style={{ display: 'flex', alignItems: 'center', gap: '16px' }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 16 }}
                                     >
                                         <ThemeToggle />
                                         <Button
@@ -151,7 +203,7 @@ export default function LandingPage() {
                                         >
                                             Get Started
                                         </Button>
-                                    </m.div>
+                                    </motion.div>
                                 )}
                             </AnimatePresence>
                         </Box>
@@ -173,19 +225,41 @@ export default function LandingPage() {
 
             <FooterSection />
 
+            {/* Invalid Link Modal */}
             <AnimatePresence>
                 {showInvalidLinkMessage && (
                     <>
-                        <m.div
+                        {/* Backdrop with blur */}
+                        <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setShowInvalidLinkMessage(false)}
-                            style={{ position: 'fixed', inset: 0, zIndex: 1300, backdropFilter: 'blur(16px)', backgroundColor: 'rgba(0,0,0,0.5)' }}
+                            style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                zIndex: 1300,
+                                backdropFilter: 'blur(8px)',
+                                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                            }}
                         />
 
-                        <Box sx={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1400, width: { xs: 'calc(100% - 32px)', sm: 'auto' }, maxWidth: 380 }}>
-                            <m.div
+                        {/* Modal Card */}
+                        <Box
+                            sx={{
+                                position: 'fixed',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                zIndex: 1400,
+                                width: { xs: 'calc(100% - 32px)', sm: 'auto' },
+                                maxWidth: 380,
+                            }}
+                        >
+                            <motion.div
                                 initial={{ scale: 0.8, opacity: 0, y: 20 }}
                                 animate={{ scale: 1, opacity: 1, y: 0 }}
                                 exit={{ scale: 0.8, opacity: 0, y: 20 }}
@@ -201,7 +275,17 @@ export default function LandingPage() {
                                         borderColor: 'divider',
                                     }}
                                 >
-                                    <Box sx={{ width: 80, height: 80, borderRadius: '50%', bgcolor: '#FFF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 3 }}>
+                                    <Box sx={{
+                                        width: 80,
+                                        height: 80,
+                                        borderRadius: '50%',
+                                        bgcolor: '#FFF3E0',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        mx: 'auto',
+                                        mb: 3,
+                                    }}>
                                         <LinkOff sx={{ fontSize: 40, color: '#E65100' }} />
                                     </Box>
 
@@ -215,12 +299,16 @@ export default function LandingPage() {
                                     <Button
                                         variant="outlined"
                                         onClick={() => setShowInvalidLinkMessage(false)}
-                                        sx={{ borderRadius: 100, px: 4, py: 1 }}
+                                        sx={{
+                                            borderRadius: 100,
+                                            px: 4,
+                                            py: 1,
+                                        }}
                                     >
                                         Got it
                                     </Button>
                                 </Paper>
-                            </m.div>
+                            </motion.div>
                         </Box>
                     </>
                 )}

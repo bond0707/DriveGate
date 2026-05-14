@@ -1,38 +1,29 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Box, Button, Typography, useColorScheme } from '@mui/material';
-import { Google } from '@mui/icons-material';
-import { m } from 'framer-motion';
+import { Box, Button, Typography, Paper, useColorScheme, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Google, PersonAdd } from '@mui/icons-material';
+import { motion } from 'framer-motion';
 import ThemeToggle from '@/components/ThemeToggle';
 import { api } from '@/lib/api';
 import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
-import SquircleLoader from '@/components/SquircleLoader';
 
-import NewUserDialog from './NewUserDialog';
-import { MotionPaper } from '@/components/motion';
+
+const MotionPaper = motion.create(Paper);
 
 export default function LoginClient() {
     const { mode } = useColorScheme();
     const searchParams = useSearchParams();
     const router = useRouter();
-    const [newUserModalOpen, setNewUserModalOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const isNewUser = searchParams.get('new_user') === 'true';
+    const [newUserModalOpen, setNewUserModalOpen] = useState(isNewUser);
 
+    // Clean up the URL once if redirected as new user
     useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 0);
-        return () => clearTimeout(timer);
-    }, []);
-
-    useEffect(() => {
-        if (searchParams.get('new_user') === 'true') {
-            const timer = setTimeout(() => {
-                setNewUserModalOpen(true);
-                router.replace('/login', { scroll: false });
-            }, 0);
-            return () => clearTimeout(timer);
+        if (isNewUser) {
+            router.replace('/login', { scroll: false });
         }
-    }, [searchParams, router]);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleGoogleAuth = async (forceConsent: boolean) => {
         try {
@@ -45,19 +36,7 @@ export default function LoginClient() {
         }
     };
 
-    if (isLoading) {
-        return (
-            <Box sx={{
-                minHeight: '100vh',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                bgcolor: '#121212',
-            }}>
-                <SquircleLoader size={50} color="#0D9488" />
-            </Box>
-        );
-    }
+
 
     return (
         <Box sx={{
@@ -95,7 +74,7 @@ export default function LoginClient() {
                 }}
             >
                 {/* Logo + Tagline */}
-                <m.div
+                <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.4 }}
@@ -115,7 +94,7 @@ export default function LoginClient() {
                     <Typography variant="body2" color="text.secondary">
                         The one-way entrance to your private cloud.
                     </Typography>
-                </m.div>
+                </motion.div>
 
                 {/* Sign In Card */}
                 <MotionPaper
@@ -139,7 +118,7 @@ export default function LoginClient() {
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
                         Sign in to manage your account
                     </Typography>
-                    <m.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                         <Button
                             variant="contained" size="large" fullWidth
                             startIcon={<Google />}
@@ -148,7 +127,7 @@ export default function LoginClient() {
                         >
                             Sign in with Google
                         </Button>
-                    </m.div>
+                    </motion.div>
                 </MotionPaper>
 
                 {/* Sign Up Card */}
@@ -173,7 +152,7 @@ export default function LoginClient() {
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
                         Create your account and connect your Drive
                     </Typography>
-                    <m.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                         <Button
                             variant="contained" size="large" fullWidth
                             startIcon={<Google />}
@@ -182,19 +161,75 @@ export default function LoginClient() {
                         >
                             Sign up with Google
                         </Button>
-                    </m.div>
+                    </motion.div>
                 </MotionPaper>
             </MotionPaper>
 
             {/* New User Modal */}
-            <NewUserDialog
+            <Dialog
                 open={newUserModalOpen}
                 onClose={() => setNewUserModalOpen(false)}
-                onSignUp={() => {
-                    setNewUserModalOpen(false);
-                    handleGoogleAuth(true);
+                slotProps={{
+                    backdrop: {
+                        sx: {
+                            backdropFilter: 'blur(4px)',
+                        }
+                    },
+                    paper: {
+                        sx: {
+                            borderRadius: 3,
+                            maxWidth: 420,
+                            m: 2,
+                            p: 1,
+                        }
+                    }
                 }}
-            />
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 2 }}>
+                    <Box sx={{
+                        p: 1,
+                        borderRadius: 2,
+                        bgcolor: '#E8F5E9',
+                        color: '#2E7D32',
+                        display: 'flex'
+                    }}>
+                        <PersonAdd />
+                    </Box>
+                    It seems you&apos;re new here...
+                </DialogTitle>
+                <DialogContent sx={{ pb: 2, px: 3 }}>
+                    <Typography color="text.secondary" sx={{ mb: 2 }}>
+                        It looks like you don&apos;t have an account yet. To get started, you&apos;ll need to:
+                    </Typography>
+                    <Box component="ol" sx={{ pl: 2, m: 0, color: 'text.secondary' }}>
+                        <li>Use the &quot;Sign up with Google&quot; button below</li>
+                        <li>Grant DriveGate permission to access your Google Drive</li>
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5, pt: 1, flexDirection: 'column', gap: 1.5 }}>
+                    <Button
+                        variant="contained"
+                        fullWidth
+                        startIcon={<Google />}
+                        onClick={() => {
+                            setNewUserModalOpen(false);
+                            handleGoogleAuth(true);
+                        }}
+                        sx={{ py: 1.5 }}
+                    >
+                        Sign up with Google
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        fullWidth
+                        onClick={() => setNewUserModalOpen(false)}
+                        sx={{ color: 'text.secondary', borderColor: 'divider' }}
+                    >
+                        I&apos;ll do it later
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }
+

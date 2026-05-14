@@ -54,7 +54,7 @@ export default function FAQSection() {
         <Box
             component="section"
             sx={{
-                py: { xs: 10, md: 8 },
+                py: { xs: 10, md: 16 },
                 bgcolor: 'background.default',
             }}
         >

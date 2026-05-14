@@ -5,7 +5,6 @@ import CssBaseline from '@mui/material/CssBaseline';
 import theme from "../theme";
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
-import MotionProvider from '@/components/MotionProvider';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://drivegate.app'),
@@ -36,11 +35,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppRouterCacheProvider>
           <ThemeProvider theme={theme} defaultMode="system">
             <CssBaseline />
-            <MotionProvider>
-              <AuthProvider>
-                {children}
-              </AuthProvider>
-            </MotionProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
           </ThemeProvider>
         </AppRouterCacheProvider>
       </body>

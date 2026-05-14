@@ -1,10 +1,11 @@
 'use client';
-import { Tooltip, Skeleton } from '@mui/material';
+import { IconButton, Tooltip, Skeleton } from '@mui/material';
 import { DarkMode, WbSunny } from '@mui/icons-material';
 import { useColorScheme } from '@mui/material/styles';
-import { m, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import React from 'react';
-import { MotionIconButton } from '@/components/motion';
+
+const MotionIconButton = motion.create(IconButton);
 
 export default function ThemeToggle() {
     const { mode, setMode, systemMode } = useColorScheme();
@@ -44,7 +45,7 @@ export default function ThemeToggle() {
                 }}
             >
                 <AnimatePresence mode="wait">
-                    <m.span
+                    <motion.span
                         key={mode}
                         initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
                         animate={{ rotate: 0, opacity: 1, scale: 1 }}
@@ -57,7 +58,7 @@ export default function ThemeToggle() {
                         ) : (
                             <DarkMode sx={{ color: 'primary.main' }} />
                         )}
-                    </m.span>
+                    </motion.span>
                 </AnimatePresence>
             </MotionIconButton>
         </Tooltip>

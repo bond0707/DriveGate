@@ -1,10 +1,11 @@
 'use client';
-import { Box, Container, Typography, Link, useColorScheme } from '@mui/material';
-import { m } from 'framer-motion';
+import { Box, Container, Typography, Paper, Link, useColorScheme } from '@mui/material';
+import { motion } from 'framer-motion';
 import Image from 'next/image';
 import ThemeToggle from '@/components/ThemeToggle';
 import { Shield, Mail, Database, Cloud, Eye, Lock, FileText, ExternalLink } from 'lucide-react';
-import { MotionPaper } from '@/components/motion';
+
+const MotionPaper = motion.create(Paper);
 
 export default function PrivacyClient() {
     const { mode } = useColorScheme();
@@ -32,7 +33,7 @@ export default function PrivacyClient() {
             icon: Database,
             content: (
                 <>
-                    <Typography variant="h6" color="text.primary" sx={{ fontWeight: 600, mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'primary.main' }}>
                         A. Google Account Information
                     </Typography>
                     <Typography component="p" gutterBottom>
@@ -45,7 +46,7 @@ export default function PrivacyClient() {
                         <li><Typography><strong>Google Account ID:</strong> A unique identifier used to securely link your account to our database.</Typography></li>
                     </Box>
 
-                    <Typography variant="h6" color="text.primary" sx={{ fontWeight: 600, mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'primary.main' }}>
                         B. Google Drive Access
                     </Typography>
                     <Typography component="p" gutterBottom>
@@ -216,7 +217,7 @@ export default function PrivacyClient() {
                 }}
             >
                 <Container maxWidth="md">
-                    <m.div
+                    <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
@@ -242,7 +243,7 @@ export default function PrivacyClient() {
                         <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.125rem' } }}>
                             Last Updated: January 10, 2026
                         </Typography>
-                    </m.div>
+                    </motion.div>
                 </Container>
             </Box>
 

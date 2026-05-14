@@ -1,8 +1,10 @@
 'use client';
-import { Box, Container, Typography } from '@mui/material';
-import { MotionPaper } from '@/components/motion';
+import { Box, Container, Typography, Paper } from '@mui/material';
+import { motion } from 'framer-motion';
 import { CloudUpload, Shield, Smartphone } from 'lucide-react';
 import AnimatedSection from '../../AnimatedSection';
+
+const MotionPaper = motion.create(Paper);
 
 const highlights = [
     {
@@ -87,7 +89,7 @@ export default function WhatIsSection() {
                     {highlights.map((item, index) => (
                         <AnimatedSection key={item.title} delay={index * 0.1}>
                             <MotionPaper
-                                whileHover={{ y: -4, borderColor: '#00897B' }}
+                                whileHover={{ y: -4 }}
                                 transition={{ duration: 0.2 }}
                                 elevation={0}
                                 sx={{
@@ -98,7 +100,6 @@ export default function WhatIsSection() {
                                     border: '1px solid',
                                     borderColor: 'divider',
                                     textAlign: 'center',
-                                    cursor: 'default',
                                 }}
                             >
                                 <Box

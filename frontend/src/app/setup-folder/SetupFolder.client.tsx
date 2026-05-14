@@ -3,6 +3,7 @@ import {
     Box,
     Container,
     Typography,
+    Paper,
     TextField,
     Button,
     IconButton,
@@ -12,14 +13,16 @@ import {
     ArrowForward,
     Close,
 } from '@mui/icons-material';
-import { m } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import SquircleLoader from '@/components/SquircleLoader';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { MotionPaper, MotionBox } from '@/components/motion';
+
+const MotionPaper = motion.create(Paper);
+const MotionBox = motion.create(Box);
 
 export default function SetupFolderClient() {
     const router = useRouter();
@@ -179,7 +182,7 @@ export default function SetupFolderClient() {
                         sx={{ mb: 3 }}
                     />
 
-                    <m.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                         <Button
                             variant="contained"
                             size="large"
@@ -191,7 +194,7 @@ export default function SetupFolderClient() {
                         >
                             {isCreating ? 'Creating...' : isUpdate ? 'Update' : 'Create Folder'}
                         </Button>
-                    </m.div>
+                    </motion.div>
 
                     <Typography
                         variant="caption"
