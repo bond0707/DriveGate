@@ -1,4 +1,3 @@
-from dns.e164 import query
 from typing import Optional, Tuple
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, update, delete
