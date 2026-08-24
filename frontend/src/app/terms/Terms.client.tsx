@@ -1,5 +1,10 @@
 'use client';
-import { Box, Container, Typography, Paper, Link, useColorScheme } from '@mui/material';
+import Box from '@mui/material/Box';
+import Container from '@mui/material/Container';
+import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
+import Link from '@mui/material/Link';
+import { useColorScheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import ThemeToggle from '@/components/ThemeToggle';

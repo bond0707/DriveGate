@@ -4,28 +4,58 @@ All notable changes to the frontend are documented in this file.
 
 ---
 
+## [24-08-2026] - React Best Practices & Performance Optimization
+
+### Performance & Bundle Size
+
+- **`optimizePackageImports`** - Enabled Turbopack package transforms in `next.config.ts` for `@mui/material`, `@mui/icons-material`, and `lucide-react`.
+- **Direct Module Resolution** - Converted barrel imports to direct component imports across all client components.
+- **Fast Build Times** - Reduced Turbopack compilation time to ~3.6s-4.3s and cold route compilation by 30%-57%.
+
+### Changed
+
+- **Responsive Navbar Animation** — Refactored `LandingPage.tsx` navbar CTA and theme toggle:
+  - Replaced multi-state timer `useEffect` with target-based relative `useScroll` (`scrollYProgress`) and hysteresis deadband (`0.45` ↔ `0.60`).
+  - Added fluid `layout` spring animation so the theme toggle smoothly slides left when the "Get Started" button appears.
+  - Eliminated duplicate theme toggle component instances.
+- **`TutorialSection` Responsiveness** — Updated the "Before You Start" prerequisite notice with responsive padding and text justification (`textAlign: { xs: 'justify', md: 'left' }`).
+- **One-time OTP State Initialization** — Replaced `useMemo` in `HeroSection.tsx` with `useState(() => generateRandomOTP())` for proper mount-time lazy initialization.
+
+### Fixed
+
+- **Unsafe `&&` Conditional Rendering** - Converted string-variable logical AND checks (`logoSrc`, `example`, `provisioningUri`, `error`, `verifyError`) to explicit ternaries (`cond ? <JSX/> : null`) across `StyledQRCode.tsx`, `TutorialSection.tsx`, `SetupTOTP.client.tsx`, and `PublicUpload.client.tsx`.
+- **Effect-Driven Upload State** - Moved completion state transition in `PublicUpload.client.tsx` directly into the `handleUploadAll` event handler.
+- **Chained Array Iteration** - Combined `.filter().map()` in `PublicUpload.client.tsx` into a single `.reduce()` pass.
+
+### Removed
+
+- **Landing Sections Barrel File** - Deleted `components/landing/sections/index.ts` to prevent broad bundle inclusion; components now import sections directly.
+
+---
+
 ## [14-02-2026] - Public Upload Page UX Overhaul
 
 ### Added
 
 - **Drag‑and‑Drop Folder Upload** — Folders can now be dragged directly into the dropzone (like GitHub):
+
   - Uses `DataTransferItem.webkitGetAsEntry()` via react‑dropzone under the hood
   - No native browser dialog — folder structure is read silently
   - `onDrop` detects folder drops via `file.path` and shows a custom confirmation dialog
   - Paths are normalized (strips leading `/` and `./` from react‑dropzone) to prevent ghost folder entries
   - File: `PublicUpload.client.tsx`
-
 - **Folder Upload Confirmation Dialog** — When a folder is dropped, a custom MUI dialog asks for confirmation:
+
   - Shows folder name, upload/cancel buttons
   - Teal accent color (`#00897B`) on icon and upload button
   - File: `PublicUpload.client.tsx`
-
 - **Leave Confirmation Dialog** — Replaced native `window.confirm()` with a styled MUI dialog:
+
   - Appears when clicking the back arrow during an active upload
   - Warning icon with amber accent, "Stay" / "Leave" buttons
   - File: `PublicUpload.client.tsx`
-
 - **`SquircleLoader`** — Replaced `CircularProgress` spinner with custom animated loader for folder creation feedback:
+
   - File: `PublicUpload.client.tsx`
 
 ### Changed
@@ -44,12 +74,13 @@ All notable changes to the frontend are documented in this file.
 ### Fixed
 
 - **Folder Created in Wrong Location** — New folders were being created at Google Drive root instead of inside the destination folder:
+
   - Re‑added `defaultFolderId` state (parsed from JWT upload token)
   - `handleCreateNewFolder` now passes `targetFolderId || defaultFolderId` as parent
   - `createFolderTree` also uses `defaultFolderId` as fallback
   - File: `PublicUpload.client.tsx`
-
 - **Duplicate Subfolder Bug** — Uploading a nested folder created ghost subfolders in Drive:
+
   - Root cause: react‑dropzone's `file-selector` uses `entry.fullPath` which starts with `/`
   - Path splitting on `/` produced an empty‑string segment, creating a nameless folder
   - Fix: `normalizePath` strips leading `/` and `./` before storing `relativePath`

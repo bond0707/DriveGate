@@ -1,23 +1,19 @@
 'use client';
-import {
-    Box,
-    Container,
-    Typography,
-    Paper,
-    TextField,
-    Button,
-    IconButton,
-    useTheme,
-    Tooltip,
-    Snackbar,
-} from '@mui/material';
-import {
-    Security,
-    Smartphone,
-    CheckCircle,
-    Close,
-    ContentCopy,
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Container from '@mui/material/Container';
+import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import Snackbar from '@mui/material/Snackbar';
+import { useTheme } from '@mui/material/styles';
+import Security from '@mui/icons-material/Security';
+import Smartphone from '@mui/icons-material/Smartphone';
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import Close from '@mui/icons-material/Close';
+import ContentCopy from '@mui/icons-material/ContentCopy';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect, Suspense } from 'react';
@@ -344,9 +340,9 @@ function TOTPSetupContent() {
                                     alignItems: 'center'
                                 }}
                             >
-                                {provisioningUri && (
+                                {provisioningUri ? (
                                     <StyledQRCode value={provisioningUri} size={200} logoSize={45} />
-                                )}
+                                ) : null}
                             </MotionBox>
 
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -529,7 +525,7 @@ function TOTPSetupContent() {
                             </Box>
 
                             <AnimatePresence>
-                                {error && (
+                                {error ? (
                                     <motion.div
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
@@ -539,7 +535,7 @@ function TOTPSetupContent() {
                                             {error}
                                         </Typography>
                                     </motion.div>
-                                )}
+                                ) : null}
                             </AnimatePresence>
 
                             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>

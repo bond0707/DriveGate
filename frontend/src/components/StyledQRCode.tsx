@@ -179,7 +179,7 @@ export default function StyledQRCode({
                 {eyes}
 
                 {/* Logo background circle */}
-                {logoSrc && (
+                {logoSrc ? (
                     <>
                         <circle
                             cx={size / 2}
@@ -198,7 +198,7 @@ export default function StyledQRCode({
                             height={logoSize}
                         />
                     </>
-                )}
+                ) : null}
             </svg>
         );
     }, [qrData, size, logoSize, logoSrc, primaryColor, secondaryColor, backgroundColor]);

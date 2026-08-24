@@ -134,9 +134,12 @@ const TutorialSection = forwardRef<TutorialSectionHandle>((_, ref) => {
                         <Paper
                             elevation={0}
                             sx={{
-                                p: 2.5,
-                                borderRadius: 3,
-                                bgcolor: 'rgba(0, 137, 123, 0.08)',
+                                p: { xs: 2, sm: 2.5, md: 3 },
+                                borderRadius: { xs: 2.5, sm: 3 },
+                                bgcolor: (theme) =>
+                                    theme.palette.mode === 'dark'
+                                        ? 'rgba(0, 137, 123, 0.10)'
+                                        : 'rgba(0, 137, 123, 0.08)',
                                 border: '1px solid',
                                 borderColor: 'rgba(0, 137, 123, 0.2)',
                             }}
@@ -147,7 +150,15 @@ const TutorialSection = forwardRef<TutorialSectionHandle>((_, ref) => {
                                     Before You Start
                                 </Typography>
                             </Box>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    color: 'text.secondary',
+                                    lineHeight: 1.65,
+                                    textAlign: 'justify',
+                                    textJustify: 'inter-word',
+                                }}
+                            >
                                 Download a{' '}
                                 <Tooltip
                                     title={
@@ -176,11 +187,12 @@ const TutorialSection = forwardRef<TutorialSectionHandle>((_, ref) => {
                                         TOTP authenticator app
                                     </Box>
                                 </Tooltip>
-                                {' '}on your phone:{' '}
+                                {' '}on your phone like {' '}
                                 <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>2FAS</Box>,{' '}
                                 <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>Google Authenticator</Box>,{' '}
-                                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>Authy</Box>, or{' '}
-                                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>Microsoft Authenticator</Box>.
+                                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>Authy</Box>, {' '}
+                                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>Microsoft Authenticator</Box>,
+                                or anything that you like.{' '}
                             </Typography>
                         </Paper>
                     </Box>
@@ -340,13 +352,13 @@ const TutorialSection = forwardRef<TutorialSectionHandle>((_, ref) => {
                                         }}
                                     >
                                         {tutorialSteps[activeStep].description}
-                                        {(tutorialSteps[activeStep] as { example?: string }).example && (
+                                        {(tutorialSteps[activeStep] as { example?: string }).example ? (
                                             <Box component="span" sx={{ display: 'block', mt: 1 }}>
                                                 Example: <Box component="code" sx={{ bgcolor: 'action.hover', px: 1, py: 0.5, borderRadius: 1, fontFamily: 'monospace', fontSize: '0.9rem' }}>
                                                     {(tutorialSteps[activeStep] as { example?: string }).example}
                                                 </Box>
                                             </Box>
-                                        )}
+                                        ) : null}
                                     </Typography>
                                 </MotionBox>
                             </AnimatePresence>
