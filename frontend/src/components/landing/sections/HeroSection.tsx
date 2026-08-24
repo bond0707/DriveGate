@@ -1,7 +1,7 @@
 'use client';
 import { Box, Container, Typography, Button } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, forwardRef } from 'react';
 import { Lock, ArrowRight, CheckCircle } from 'lucide-react';
 import AnimatedSection from '../../AnimatedSection';
 import TextReveal from '../../TextReveal';
@@ -173,11 +173,13 @@ function HeroVisual({ otpDigits }: { otpDigits: string[] }) {
 }
 
 interface HeroSectionProps {
-    onVisibilityChange: (visible: boolean) => void;
     onHowItWorksClick?: () => void;
 }
 
-export default function HeroSection({ onVisibilityChange, onHowItWorksClick }: HeroSectionProps) {
+const HeroSection = forwardRef<HTMLElement, HeroSectionProps>(function HeroSection(
+    { onHowItWorksClick },
+    ref
+) {
     const { scrollTo } = useSmoothScroll();
 
     // Generate random OTP on mount
@@ -185,6 +187,7 @@ export default function HeroSection({ onVisibilityChange, onHowItWorksClick }: H
 
     return (
         <Box
+            ref={ref}
             component="section"
             sx={{
                 minHeight: { xs: 'auto', md: '100vh' },
@@ -196,7 +199,6 @@ export default function HeroSection({ onVisibilityChange, onHowItWorksClick }: H
                 pb: { xs: 6, md: 0 },
             }}
         >
-
             <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
                 <Box
                     sx={{
@@ -232,6 +234,7 @@ export default function HeroSection({ onVisibilityChange, onHowItWorksClick }: H
                                     maxWidth: 500,
                                     fontSize: { xs: '0.95rem', md: '1.125rem' },
                                     textAlign: { xs: 'justify', md: 'left' },
+                                    textJustify: 'inter-word',
                                 }}
                             >
                                 Upload files to your Google Drive from any device using just a 6-digit code from your authenticator app. No login needed on untrusted devices.
@@ -241,9 +244,6 @@ export default function HeroSection({ onVisibilityChange, onHowItWorksClick }: H
                         <AnimatedSection delay={0.5} slideDirection="up">
                             <MotionBox
                                 sx={{ display: 'flex', gap: { xs: 1.5, md: 2 }, justifyContent: { xs: 'center', md: 'flex-start' } }}
-                                onViewportEnter={() => onVisibilityChange(true)}
-                                onViewportLeave={() => onVisibilityChange(false)}
-                                viewport={{ margin: '-100px' }}
                             >
                                 <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                                     <Button
@@ -295,4 +295,6 @@ export default function HeroSection({ onVisibilityChange, onHowItWorksClick }: H
             </Container>
         </Box>
     );
-}
+});
+
+export default HeroSection;

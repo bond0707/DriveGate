@@ -21,6 +21,18 @@ A web app that lets users upload files directly to their own Google Drive, witho
 
 * **Database:** **PostgreSQL** (Managed via **Aiven**)
 
+## Performance Benchmarks
+
+| Metric                                               | Current Result    |
+| ---------------------------------------------------- | ----------------- |
+| **Production Build Time (Turbopack)**          | `~3.6s – 4.3s` |
+| **Static Page Generation (14 routes)**         | `~540ms`        |
+| **Dev Cold Route `/` (Landing Page)**        | `3.67s`         |
+| **Dev Cold Route `/dashboard`**              | `1.49s`         |
+| **Dev Cold Route `/[slug]` (Upload Portal)** | `1.64s`         |
+| **Dev Cold Route `/login`**                  | `1.01s`         |
+| **Dev Cold Route `/setup-totp`**             | `1.08s`         |
+
 ## Project Structure
 
 ### Frontend: Next.js Application
@@ -41,28 +53,30 @@ A web app that lets users upload files directly to their own Google Drive, witho
 | `src/components/`               | Reusable UI components              |
 | `src/context/`                  | React context providers (auth)      |
 | `src/lib/`                      | API client utilities                |
+
 ---
+
 ### Backend: FastAPI Application
 
-| Path                                     | Description                                          |
-| :--------------------------------------- | :--------------------------------------------------- |
+| Path                                     | Description                                        |
+| :--------------------------------------- | :------------------------------------------------- |
 | `app/routers/auth_router.py`           | `/auth/*`  OAuth, user profile, token validation |
 | `app/routers/totp_router.py`           | `/totp/*`  TOTP setup and verification           |
 | `app/routers/url_slug_router.py`       | `/url/*`  URL slug management                    |
 | `app/routers/drive_router.py`          | `/drive/*`  Folder creation, upload links        |
-| `app/services/google_auth_service.py`  | OAuth token management                               |
-| `app/services/google_drive_service.py` | Drive API operations                                 |
-| `app/services/totp_service.py`         | TOTP generation/verification                         |
-| `app/services/user_service.py`         | User CRUD                                            |
-| `app/models/`                          | SQLAlchemy models                                    |
-| `app/schemas/`                         | Pydantic request/response models                     |
-| `app/core/`                            | App config and enums                                 |
-| `app/database/`                        | Database connection and enums                        |
-| `app/utils/jwt_manager.py`             | JWT creation/validation                              |
-| `app/utils/dependencies.py`            | Route dependencies                                   |
-| `app/utils/encryption.py`              | TOTP secret encryption                               |
-| `app/utils/rate_limiter.py`            | TOTP brute-force protection                          |
-| `testcases/`                           | API test documentation                               |
+| `app/services/google_auth_service.py`  | OAuth token management                             |
+| `app/services/google_drive_service.py` | Drive API operations                               |
+| `app/services/totp_service.py`         | TOTP generation/verification                       |
+| `app/services/user_service.py`         | User CRUD                                          |
+| `app/models/`                          | SQLAlchemy models                                  |
+| `app/schemas/`                         | Pydantic request/response models                   |
+| `app/core/`                            | App config and enums                               |
+| `app/database/`                        | Database connection and enums                      |
+| `app/utils/jwt_manager.py`             | JWT creation/validation                            |
+| `app/utils/dependencies.py`            | Route dependencies                                 |
+| `app/utils/encryption.py`              | TOTP secret encryption                             |
+| `app/utils/rate_limiter.py`            | TOTP brute-force protection                        |
+| `testcases/`                           | API test documentation                             |
 
 ## Architecture Flows
 

@@ -33,7 +33,6 @@ import {
     Lock,
     Folder,
     CreateNewFolder,
-
     FolderOpen,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -718,7 +717,7 @@ export default function PublicUploadClient() {
                             </Box>
 
                             <AnimatePresence>
-                                {verifyError && (
+                                {verifyError ? (
                                     <motion.div
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
@@ -731,7 +730,7 @@ export default function PublicUploadClient() {
                                             }
                                         </Typography>
                                     </motion.div>
-                                )}
+                                ) : null}
                             </AnimatePresence>
                         </MotionPaper>
                     )}

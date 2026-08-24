@@ -1,19 +1,15 @@
 'use client';
-import {
-    Box,
-    Container,
-    Typography,
-    Paper,
-    TextField,
-    Button,
-    InputAdornment,
-    IconButton,
-} from '@mui/material';
-import {
-    Link as LinkIcon,
-    ArrowForward,
-    Close,
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Container from '@mui/material/Container';
+import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import LinkIcon from '@mui/icons-material/Link';
+import ArrowForward from '@mui/icons-material/ArrowForward';
+import Close from '@mui/icons-material/Close';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';

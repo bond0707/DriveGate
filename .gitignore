@@ -5,6 +5,8 @@
 
 # VS Code configs
 .vscode/
+.opencode/
+orchestrator.config.json
 
 # skills
 .agents/

@@ -6,28 +6,25 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { LinkOff } from '@mui/icons-material';
 import Image from 'next/image';
 import ThemeToggle from '../ThemeToggle';
-import {
-    HeroSection,
-    WhatIsSection,
-    ProblemSolutionSection,
-    FeaturesSection,
-    UseCasesSection,
-    TutorialSection,
-    TrustSection,
-    FAQSection,
-    FooterSection,
-} from './sections';
-import type { TutorialSectionHandle } from './sections';
+import HeroSection from './sections/HeroSection';
+import WhatIsSection from './sections/WhatIsSection';
+import ProblemSolutionSection from './sections/ProblemSolutionSection';
+import FeaturesSection from './sections/FeaturesSection';
+import UseCasesSection from './sections/UseCasesSection';
+import TutorialSection from './sections/TutorialSection';
+import TrustSection from './sections/TrustSection';
+import FAQSection from './sections/FAQSection';
+import FooterSection from './sections/FooterSection';
+import type { TutorialSectionHandle } from './sections/TutorialSection';
 
 export default function LandingPage() {
     const { mode } = useColorScheme();
     const searchParams = useSearchParams();
     const router = useRouter();
     const [scrolled, setScrolled] = useState(false);
-    const [heroButtonVisible, setHeroButtonVisible] = useState(true);
-    const [firstToggleVisible, setFirstToggleVisible] = useState(true);
-    const [secondToggleVisible, setSecondToggleVisible] = useState(false);
+    const [showNavButton, setShowNavButton] = useState(false);
     const [showInvalidLinkMessage, setShowInvalidLinkMessage] = useState(false);
+    const heroRef = useRef<HTMLElement>(null);
     const tutorialRef = useRef<TutorialSectionHandle>(null);
 
     // Check for invalid_link query parameter
@@ -45,32 +42,26 @@ export default function LandingPage() {
         }
     }, [searchParams, router]);
 
-    useMotionValueEvent(useScroll().scrollY, "change", (latest) => {
+    // Header blur state
+    const { scrollY } = useScroll();
+    useMotionValueEvent(scrollY, "change", (latest) => {
         setScrolled(latest > 50);
     });
 
-    // Handle toggle visibility with delays for smooth transitions
-    useEffect(() => {
-        if (heroButtonVisible) {
-            // Scrolling up: hide second toggle immediately, show first after delay
-            startTransition(() => {
-                setSecondToggleVisible(false);
-            });
-            const timer = setTimeout(() => {
-                setFirstToggleVisible(true);
-            }, 500);
-            return () => clearTimeout(timer);
-        } else {
-            // Scrolling down: hide first toggle immediately, show second after delay
-            startTransition(() => {
-                setFirstToggleVisible(false);
-            });
-            const timer = setTimeout(() => {
-                setSecondToggleVisible(true);
-            }, 100); // Small delay to let first toggle disappear
-            return () => clearTimeout(timer);
+    // Proportional & responsive hero scroll progress (0.0 = top of hero, 1.0 = scrolled past hero)
+    const { scrollYProgress: heroScrollProgress } = useScroll({
+        target: heroRef,
+        offset: ["start start", "end start"],
+    });
+
+    useMotionValueEvent(heroScrollProgress, "change", (progress) => {
+        // Hysteresis deadband (0.45 ↔ 0.60) prevents boundary jitter on all screen resolutions
+        if (progress > 0.60) {
+            setShowNavButton(true);
+        } else if (progress < 0.45) {
+            setShowNavButton(false);
         }
-    }, [heroButtonVisible]);
+    });
 
     const handleHowItWorksClick = () => {
         // Reset tutorial to first step
@@ -171,21 +162,33 @@ export default function LandingPage() {
                                 DriveGate
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            {/* Theme toggle visible when hero button is visible (with delay on reappear) */}
-                            {firstToggleVisible && <ThemeToggle />}
+                        <motion.div
+                            layout
+                            style={{ display: 'flex', alignItems: 'center', gap: 12 }}
+                            transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+                        >
+                            <motion.div
+                                layout
+                                transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+                            >
+                                <ThemeToggle />
+                            </motion.div>
 
-                            {/* Get Started + Theme toggle that slide in together (with delay) */}
-                            <AnimatePresence>
-                                {secondToggleVisible && (
+                            {/* Get Started button that slides in when scrolled past hero */}
+                            <AnimatePresence mode="popLayout">
+                                {showNavButton && (
                                     <motion.div
-                                        initial={{ x: 100, opacity: 0 }}
-                                        animate={{ x: 0, opacity: 1 }}
-                                        exit={{ x: 100, opacity: 0 }}
-                                        transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 16 }}
+                                        layout
+                                        initial={{ opacity: 0, x: 50, scale: 0.9 }}
+                                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                                        exit={{ opacity: 0, x: 50, scale: 0.9 }}
+                                        transition={{
+                                            opacity: { duration: 0.2 },
+                                            x: { type: 'spring', damping: 26, stiffness: 220 },
+                                            scale: { duration: 0.2 },
+                                            layout: { type: 'spring', damping: 26, stiffness: 220 }
+                                        }}
                                     >
-                                        <ThemeToggle />
                                         <Button
                                             variant="contained"
                                             size="small"
@@ -199,6 +202,7 @@ export default function LandingPage() {
                                                 fontSize: { xs: '0.75rem', sm: '0.875rem' },
                                                 px: { xs: 1.5, sm: 2 },
                                                 py: { xs: 0.5, sm: 0.75 },
+                                                whiteSpace: 'nowrap',
                                             }}
                                         >
                                             Get Started
@@ -206,14 +210,14 @@ export default function LandingPage() {
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-                        </Box>
+                        </motion.div>
                     </Box>
                 </Container>
             </Box>
 
             {/* Main Content */}
             <main>
-                <HeroSection onVisibilityChange={setHeroButtonVisible} onHowItWorksClick={handleHowItWorksClick} />
+                <HeroSection ref={heroRef} onHowItWorksClick={handleHowItWorksClick} />
                 <WhatIsSection />
                 <ProblemSolutionSection />
                 <FeaturesSection />
